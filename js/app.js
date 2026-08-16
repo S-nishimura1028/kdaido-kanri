@@ -49,8 +49,8 @@
       $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
       $('userInfo').textContent=`${profile?.name||user.email} / ${roleLabel(profile?.role)}`;
       document.querySelectorAll('.admin-only').forEach(e=>e.classList.toggle('hidden',!isManager()));
-      await loadMasters(); await loadDashboard(); await loadAssets(); await loadHistory();
       $('connectionStatus').textContent='Supabase接続OK';
+      await loadMasters(); await loadDashboard(); await loadAssets(); await loadHistory();
     }catch(e){console.error(e);showLogin();showError('ログイン後のデータ取得に失敗しました。 '+(e.message||''));}
   }
 
