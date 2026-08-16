@@ -9,6 +9,21 @@
     return client;
   }
 
+  function errorMessage(value,fallback='管理者を作成できませんでした。'){
+    if(value==null||value==='')return fallback;
+    if(typeof value==='string')return value;
+    if(value instanceof Error)return value.message||fallback;
+    if(typeof value==='object'){
+      const nested=value.error ?? value.message ?? value.msg ?? value.error_description ?? value.details ?? value.hint;
+      if(nested!=null&&nested!==value)return errorMessage(nested,fallback);
+      try{
+        const text=JSON.stringify(value);
+        return text&&text!=='{}'?text:fallback;
+      }catch(_e){return fallback;}
+    }
+    return String(value);
+  }
+
   function generatePassword(){
     const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
     const symbols='!@#$%';
@@ -75,16 +90,19 @@
           headers:{Authorization:`Bearer ${token}`}
         });
         if(error){
-          let message=error.message||'管理者を作成できませんでした。';
-          try{const details=await error.context?.json?.();if(details?.error)message=details.error;}catch(_e){}
+          let message=errorMessage(error);
+          try{
+            const details=await error.context?.json?.();
+            if(details)message=errorMessage(details,message);
+          }catch(_e){}
           throw new Error(message);
         }
-        if(data?.error)throw new Error(data.error);
+        if(data?.error)throw new Error(errorMessage(data.error));
         alert(`管理者アカウントを作成しました。\n\n${em}\n\n初期パスワードは本人へ伝えてください。`);
         overlay.remove();
         sessionStorage.setItem('reopenAdmin','1');
         location.reload();
-      }catch(e){err.textContent=e.message||'管理者を作成できませんでした。';}
+      }catch(e){err.textContent=errorMessage(e);}
       finally{if(document.body.contains(save)){save.disabled=false;save.textContent='管理者を作成';}}
     };
 
