@@ -1,0 +1,67 @@
+name: Add QR Print Feature
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-qr-print.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add QR print button and print layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('js/app.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''        <canvas id=\"qrCanvas\" style=\"max-width:100%\"></canvas>\n        <div id=\"qrError\" class=\"form-error\"></div>\n      </div>`;'''
+          new = '''        <canvas id=\"qrCanvas\" style=\"max-width:100%\"></canvas>\n        <div style=\"margin-top:12px\"><button type=\"button\" class=\"primary\" id=\"qrPrintBtn\" style=\"min-height:46px\">QRを印刷</button></div>\n        <div id=\"qrError\" class=\"form-error\"></div>\n      </div>`;'''
+          if old not in s:
+              raise SystemExit('QR area target not found')
+          s = s.replace(old, new, 1)
+
+          old2 = '''    $('qrBtn').onclick=()=>makeQR(a);'''
+          if old2 in s:
+              s = s.replace(old2, "    $('qrBtn').onclick=()=>makeQR(a);", 1)
+
+          marker = '''    qrButton.addEventListener('click',async(ev)=>{ev.preventDefault();ev.stopPropagation();await makeQR(a)});'''
+          add = marker + "\n    $('qrPrintBtn').addEventListener('click',()=>printAssetQR(a));"
+          if marker not in s:
+              raise SystemExit('QR button handler target not found')
+          s = s.replace(marker, add, 1)
+
+          marker2 = '''  async function makeQR(a){'''
+          fn = r'''  function printAssetQR(a){
+    const canvas=$('qrCanvas');
+    if(!canvas||!canvas.width){const e=$('qrError');if(e)e.textContent='先にQRコードを表示してください。';return}
+    const img=canvas.toDataURL('image/png');
+    const w=window.open('','_blank');
+    if(!w){const e=$('qrError');if(e)e.textContent='印刷画面を開けませんでした。ポップアップを許可してください。';return}
+    const assetNo=esc(a.asset_no||'');
+    const name=esc(a.name||'');
+    const locationText=esc(a.location||'');
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${assetNo} QR印刷</title><style>
+      @page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;margin:0;color:#111}.sheet{display:flex;justify-content:center;align-items:flex-start}.label{width:72mm;min-height:88mm;border:1.5px solid #111;border-radius:4mm;padding:6mm;text-align:center}.company{font-size:11pt;font-weight:800;margin-bottom:3mm}.assetno{font-size:15pt;font-weight:800;margin:1mm 0}.name{font-size:13pt;font-weight:700;margin:2mm 0 3mm}.qr{width:48mm;height:48mm;image-rendering:pixelated}.loc{font-size:10pt;margin-top:2mm}.hint{font-size:8pt;color:#555;margin-top:2mm}@media print{button{display:none}}
+    </style></head><body><div class="sheet"><div class="label"><div class="company">熊本大同青果｜備品管理</div><div class="assetno">${assetNo}</div><div class="name">${name}</div><img class="qr" src="${img}" alt="QR"><div class="loc">${locationText}</div><div class="hint">スマートフォンで読み取ると備品詳細が開きます</div></div></div><script>window.onload=()=>{setTimeout(()=>window.print(),150)}<\/script></body></html>`);
+    w.document.close();
+  }
+
+'''
+          if marker2 not in s:
+              raise SystemExit('makeQR marker not found')
+          s = s.replace(marker2, fn + marker2, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/app.js
+          git commit -m 'Add printable asset QR labels'
+          git push
