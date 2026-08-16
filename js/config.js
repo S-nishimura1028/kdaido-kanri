@@ -28,3 +28,11 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
   s.defer=true;
   document.head.appendChild(s);
 })();
+
+// 管理画面の使用者マスタと、備品登録時の使用者プルダウン。
+(function loadUserMaster(){
+  const s=document.createElement('script');
+  s.src='js/user-master.js';
+  s.defer=true;
+  document.head.appendChild(s);
+})();
