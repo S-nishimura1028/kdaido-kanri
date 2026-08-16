@@ -108,7 +108,8 @@
     const btn=document.getElementById('qrBatchPrintBtn');
     if(!btn) return;
     const n=document.querySelectorAll('#assetTable .qr-row-check:checked').length;
-    btn.textContent=n?`QRまとめ印刷（${n}件）`:'QRまとめ印刷';
+    const next=n?`QRまとめ印刷（${n}件）`:'QRまとめ印刷';
+    if(btn.textContent!==next) btn.textContent=next;
   }
 
   async function printSelectedAssets(){
@@ -132,7 +133,18 @@
     w.document.close();
   }
 
-  const observer=new MutationObserver(()=>{addPrintButton();enhanceAssetTable();});
+  let scheduled=false;
+  function scheduleEnhance(){
+    if(scheduled) return;
+    scheduled=true;
+    requestAnimationFrame(()=>{
+      scheduled=false;
+      addPrintButton();
+      enhanceAssetTable();
+    });
+  }
+
+  const observer=new MutationObserver(scheduleEnhance);
   observer.observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener('DOMContentLoaded',()=>{addPrintButton();enhanceAssetTable();});
+  document.addEventListener('DOMContentLoaded',scheduleEnhance);
 })();
