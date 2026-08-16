@@ -65,7 +65,15 @@
       save.disabled=true;save.textContent='作成中…';
       try{
         const c=db();if(!c)throw new Error('Supabaseに接続できません。');
-        const {data,error}=await c.functions.invoke('admin-users',{body:{action:'create',email:em,password:pw}});
+        const {data:sessionData,error:sessionError}=await c.auth.getSession();
+        if(sessionError)throw sessionError;
+        const token=sessionData?.session?.access_token;
+        if(!token)throw new Error('ログイン情報を確認できません。いったんログアウトして再ログインしてください。');
+
+        const {data,error}=await c.functions.invoke('admin-users',{
+          body:{action:'create',email:em,password:pw},
+          headers:{Authorization:`Bearer ${token}`}
+        });
         if(error){
           let message=error.message||'管理者を作成できませんでした。';
           try{const details=await error.context?.json?.();if(details?.error)message=details.error;}catch(_e){}
