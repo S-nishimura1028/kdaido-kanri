@@ -45,10 +45,10 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
   document.head.appendChild(s);
 })();
 
-// 履歴の備品欄を内部IDではなく「備品番号 / 備品名」で表示。
+// 履歴を「備品番号 / 備品名」にし、使用者と変更者も表示。
 (function loadHistoryLabels(){
   const s=document.createElement('script');
-  s.src='js/history-label.js?v=20260816-2';
+  s.src='js/history-label.js?v=20260816-3';
   s.defer=true;
   document.head.appendChild(s);
 })();
