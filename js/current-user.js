@@ -35,14 +35,30 @@
     return [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'ja'));
   }
 
+  function ensurePickerStyle(){
+    if(document.getElementById('currentUserPickerStyle'))return;
+    const style=document.createElement('style');
+    style.id='currentUserPickerStyle';
+    style.textContent=`
+      #currentUserPickerDialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;overflow:visible}
+      #currentUserPickerDialog::backdrop{background:rgba(4,30,47,.55);backdrop-filter:blur(3px)}
+      #currentUserPickerDialog .current-user-picker-card{width:min(440px,calc(100vw - 32px));background:#fff;border-radius:18px;padding:20px;box-sizing:border-box;box-shadow:0 24px 70px rgba(0,0,0,.28);border:1px solid #dbe8e3}
+    `;
+    document.head.appendChild(style);
+  }
+
   function chooseUser(asset,names){
     return new Promise(resolve=>{
-      document.getElementById('currentUserPickerOverlay')?.remove();
-      const overlay=document.createElement('div');
-      overlay.id='currentUserPickerOverlay';
-      overlay.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(4,30,47,.55);display:grid;place-items:center;padding:16px;backdrop-filter:blur(3px)';
+      document.getElementById('currentUserPickerDialog')?.remove();
+      ensurePickerStyle();
+
+      // 備品詳細も <dialog> なので、通常の fixed 要素だとその背面に隠れる。
+      // 使用者選択も modal dialog にしてブラウザの top layer 上で重ねる。
+      const dialog=document.createElement('dialog');
+      dialog.id='currentUserPickerDialog';
+
       const card=document.createElement('div');
-      card.style.cssText='width:min(440px,94vw);background:#fff;border-radius:18px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.28);border:1px solid #dbe8e3';
+      card.className='current-user-picker-card';
       const title=document.createElement('h3');
       title.textContent='使用者変更';
       title.style.cssText='margin:0 0 6px;color:#173f59';
@@ -67,6 +83,7 @@
       });
       select.value=asset.user_name||'';
       label.appendChild(select);
+
       const actions=document.createElement('div');
       actions.style.cssText='display:flex;gap:10px;justify-content:flex-end;margin-top:18px';
       const cancel=document.createElement('button');
@@ -74,13 +91,34 @@
       const save=document.createElement('button');
       save.type='button';save.className='primary';save.textContent='変更する';save.style.minHeight='46px';
       actions.append(cancel,save);
-      card.append(title,desc,label,actions);overlay.appendChild(card);document.body.appendChild(overlay);
+      card.append(title,desc,label,actions);
+      dialog.appendChild(card);
+      document.body.appendChild(dialog);
+
       let finished=false;
-      const finish=value=>{if(finished)return;finished=true;overlay.remove();resolve(value);};
+      const finish=value=>{
+        if(finished)return;
+        finished=true;
+        try{if(dialog.open)dialog.close();}catch(_e){}
+        dialog.remove();
+        resolve(value);
+      };
       cancel.addEventListener('click',()=>finish(undefined));
       save.addEventListener('click',()=>finish(select.value));
-      overlay.addEventListener('click',e=>{if(e.target===overlay)finish(undefined);});
-      select.focus();
+      dialog.addEventListener('cancel',e=>{e.preventDefault();finish(undefined);});
+      dialog.addEventListener('click',e=>{
+        const r=card.getBoundingClientRect();
+        if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)finish(undefined);
+      });
+
+      try{
+        dialog.showModal();
+        setTimeout(()=>select.focus(),0);
+      }catch(err){
+        console.error('user picker dialog',err);
+        finish(undefined);
+        alert('使用者選択を開けませんでした。ページを再読み込みしてお試しください。');
+      }
     });
   }
 
@@ -105,9 +143,6 @@
     const detail=document.getElementById('detailDialog');
     const actions=document.querySelector('#assetDetail .dialog-actions');
     if(!detail||!detail.open||!actions)return;
-
-    // app.js が管理者だけに出す「編集」ボタンを権限判定に使う。
-    // Supabaseのセッション確認待ちでボタンが消える問題を避ける。
     if(!document.getElementById('detailEditBtn'))return;
 
     const existing=[...actions.querySelectorAll('button')].filter(b=>b.id==='currentUserQuickEditBtn'||b.textContent.trim()==='使用者変更');
