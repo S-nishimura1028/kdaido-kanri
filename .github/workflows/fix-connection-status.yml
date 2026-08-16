@@ -1,0 +1,35 @@
+name: Fix Connection Status
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-connection-status.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update status as soon as Supabase session is established
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('js/app.js')
+          s=p.read_text(encoding='utf-8')
+          old="""      document.querySelectorAll('.admin-only').forEach(e=>e.classList.toggle('hidden',!isManager()));\n      await loadMasters(); await loadDashboard(); await loadAssets(); await loadHistory();\n      $('connectionStatus').textContent='Supabase接続OK';"""
+          new="""      document.querySelectorAll('.admin-only').forEach(e=>e.classList.toggle('hidden',!isManager()));\n      $('connectionStatus').textContent='Supabase接続OK';\n      await loadMasters(); await loadDashboard(); await loadAssets(); await loadHistory();"""
+          if old not in s:
+              raise SystemExit('target not found')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Commit change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/app.js
+          git commit -m 'Show Supabase connection status immediately after login'
+          git push
