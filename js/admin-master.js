@@ -1,7 +1,7 @@
 (function(){
   'use strict';
-  let client=null,rendering=false,guarding=false;
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
+  let client=null,rendering=false,guarding=false,userGroups=[];
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function db(){
     if(client)return client;
     if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
@@ -44,8 +44,16 @@
   function ensureStyles(){
     if(document.getElementById('adminMasterStyle'))return;
     const s=document.createElement('style');s.id='adminMasterStyle';
-    s.textContent=`.master-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.master-mini{border:0;border-radius:8px;padding:7px 10px;font-weight:700;background:#edf4f2;color:#355e55}.master-mini.danger{background:#f8eceb;color:#9b2c22}.master-mini.promote{background:#e8f1fb;color:#075b9b}.master-add{margin-left:auto}.master-row strong{overflow-wrap:anywhere}.admin-account-note{font-size:13px;color:var(--muted);line-height:1.6;padding:2px 0 12px}.admin-account-meta{display:block;color:var(--muted);font-size:12px;margin-top:3px}`;
+    s.textContent=`.master-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.master-mini{border:0;border-radius:8px;padding:7px 10px;font-weight:700;background:#edf4f2;color:#355e55}.master-mini.danger{background:#f8eceb;color:#9b2c22}.master-mini.promote{background:#e8f1fb;color:#075b9b}.master-add{margin-left:auto}.master-row strong{overflow-wrap:anywhere}.admin-account-note{font-size:13px;color:var(--muted);line-height:1.6;padding:2px 0 12px}.admin-account-meta{display:block;color:var(--muted);font-size:12px;margin-top:3px}.user-admin-assets{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5}.user-admin-count{font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;background:#e8f5ec;color:#166534}`;
     document.head.appendChild(s);
+  }
+
+  function ensureUserPanel(){
+    if(document.getElementById('userAdmin'))return;
+    const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
+    const panel=document.createElement('div');panel.className='panel';panel.innerHTML='<div class="panel-head"><h3>現在の使用者</h3></div><div class="admin-account-note">備品に登録されている使用者を一覧表示します。名前を編集すると、その人が使用中の備品すべてに反映されます。</div><div id="userAdmin" class="master-list"></div>';
+    const first=grid.querySelector('.panel');
+    if(first?.nextSibling)grid.insertBefore(panel,first.nextSibling);else grid.appendChild(panel);
   }
 
   async function renderProfiles(){
@@ -57,6 +65,26 @@
     const rows=data||[];
     host.innerHTML=`<div class="admin-account-note">このアプリへログインできるのは管理者だけです。一般社員はアカウントを作らず、QRコードから閲覧します。旧アカウントが残っている場合は「管理者にする」で統一できます。</div>`+
       (rows.length?rows.map(x=>`<div class="master-row" data-profile-row="${x.id}"><span><strong>${esc(x.name||'名称未設定')}</strong><small class="admin-account-meta">${esc(x.email||'メール未設定')}</small></span><div class="master-actions">${x.role==='admin'?`<span class="badge use">管理者</span><button type="button" class="master-mini profile-name-edit" data-id="${x.id}" data-name="${esc(x.name||'')}">名前編集</button>`:`<span class="badge">旧権限: ${esc(x.role||'未設定')}</span><button type="button" class="master-mini promote profile-promote" data-id="${x.id}" data-name="${esc(x.name||x.email||'このアカウント')}">管理者にする</button>`}</div></div>`).join(''):'<div class="empty">アカウントはありません。</div>');
+  }
+
+  async function renderUsers(){
+    ensureUserPanel();
+    const host=document.getElementById('userAdmin');if(!host)return;
+    const c=db();
+    const {data,error}=await c.from('assets').select('id,asset_no,name,user_name,status').not('user_name','is',null).order('user_name');
+    if(error){host.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
+    const map=new Map();
+    (data||[]).forEach(a=>{
+      const name=String(a.user_name||'').trim();if(!name)return;
+      if(!map.has(name))map.set(name,[]);
+      map.get(name).push(a);
+    });
+    userGroups=[...map.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ja')).map(([name,items])=>({name,items}));
+    host.innerHTML=userGroups.length?userGroups.map((g,i)=>{
+      const items=g.items.slice(0,4).map(a=>`${esc(a.asset_no||'-')} ${esc(a.name||'')}`).join('、');
+      const more=g.items.length>4?` ほか${g.items.length-4}件`:'';
+      return `<div class="master-row"><span><strong>${esc(g.name)}</strong><small class="user-admin-assets">${items}${more}</small></span><div class="master-actions"><span class="user-admin-count">${g.items.length}件</span><button type="button" class="master-mini user-name-edit" data-index="${i}">名前編集</button></div></div>`;
+    }).join(''):'<div class="empty">現在の使用者は登録されていません。</div>';
   }
 
   async function renderOne(def){
@@ -79,13 +107,22 @@
     if(rendering)return;
     if(!document.getElementById('adminPage'))return;
     if(!(await isAdmin()))return;
-    rendering=true;ensureStyles();ensureAddButtons();
-    try{await renderProfiles();for(const def of defs)await renderOne(def);}finally{rendering=false;}
+    rendering=true;ensureStyles();ensureUserPanel();ensureAddButtons();
+    try{await renderProfiles();await renderUsers();for(const def of defs)await renderOne(def);}finally{rendering=false;}
   }
 
   function reopenAdminAfterReload(){sessionStorage.setItem('reopenAdmin','1');location.reload();}
 
   document.addEventListener('click',async e=>{
+    const userEdit=e.target.closest('.user-name-edit');
+    if(userEdit){
+      const group=userGroups[Number(userEdit.dataset.index)];if(!group)return;
+      const next=prompt('使用者の新しい名前を入力してください',group.name);if(!next||!next.trim()||next.trim()===group.name)return;
+      if(!confirm(`「${group.name}」を「${next.trim()}」へ変更しますか？\nこの使用者が登録されている ${group.items.length} 件の備品すべてに反映されます。`))return;
+      const c=db();const {error}=await c.from('assets').update({user_name:next.trim()}).eq('user_name',group.name);
+      if(error){alert('使用者名を変更できませんでした: '+error.message);return;}
+      await renderUsers();return;
+    }
     const promote=e.target.closest('.profile-promote');
     if(promote){
       if(!confirm(`「${promote.dataset.name}」を管理者にしますか？\n管理者は備品・履歴・管理画面をすべて編集できます。`))return;
@@ -124,12 +161,12 @@
     const page=document.getElementById('adminPage');if(!page||page.classList.contains('hidden'))return;
     const profileHost=document.getElementById('profileTable');
     const legacyRoles=profileHost?.querySelector('.role-select');
-    const needs=legacyRoles||defs.some(d=>{const h=document.getElementById(d.host);return h&&!h.querySelector('.master-actions')&&!h.querySelector('.empty')});
+    const needs=legacyRoles||!document.getElementById('userAdmin')||defs.some(d=>{const h=document.getElementById(d.host);return h&&!h.querySelector('.master-actions')&&!h.querySelector('.empty')});
     if(needs)setTimeout(render,60);
   });
 
   document.addEventListener('DOMContentLoaded',()=>{
-    ensureStyles();
+    ensureStyles();ensureUserPanel();
     enforceAdminOnly();
     const c=db();c?.auth.onAuthStateChange(()=>setTimeout(enforceAdminOnly,0));
     const adminPage=document.getElementById('adminPage');if(adminPage)obs.observe(adminPage,{childList:true,subtree:true});
