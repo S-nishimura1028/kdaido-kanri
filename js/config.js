@@ -48,7 +48,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 履歴の備品欄を内部IDではなく「備品番号 / 備品名」で表示。
 (function loadHistoryLabels(){
   const s=document.createElement('script');
-  s.src='js/history-label.js?v=20260816-1';
+  s.src='js/history-label.js?v=20260816-2';
   s.defer=true;
   document.head.appendChild(s);
 })();
