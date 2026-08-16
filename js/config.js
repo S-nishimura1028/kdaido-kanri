@@ -40,7 +40,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 管理者アカウント追加を「メールアドレス＋初期パスワード」だけに統一。
 (function loadSimpleAdminAccountCreator(){
   const s=document.createElement('script');
-  s.src='js/admin-account-simple.js';
+  s.src='js/admin-account-simple.js?v=20260817-1';
   s.defer=true;
   document.head.appendChild(s);
 })();
