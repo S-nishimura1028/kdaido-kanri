@@ -60,3 +60,11 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
   s.defer=true;
   document.head.appendChild(s);
 })();
+
+// 左上のブランド表示を会社名中心に整理。
+(function loadSidebarBrand(){
+  const s=document.createElement('script');
+  s.src='js/sidebar-brand.js?v=20260816-1';
+  s.defer=true;
+  document.head.appendChild(s);
+})();
