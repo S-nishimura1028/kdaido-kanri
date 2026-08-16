@@ -3,6 +3,7 @@
 
   let client=null;
   let currentAssetId=new URL(location.href).searchParams.get('asset')||null;
+  let adding=false;
 
   function db(){
     if(client)return client;
@@ -22,37 +23,48 @@
   async function editCurrentUser(){
     if(!currentAssetId){alert('備品を特定できませんでした。');return;}
     const c=db(); if(!c){alert('接続準備ができていません。');return;}
-
     const {data:a,error}=await c.from('assets').select('id,asset_no,name,user_name,status').eq('id',currentAssetId).single();
     if(error||!a){alert('備品情報を取得できませんでした。');return;}
-
     const value=prompt(`現在の使用者を入力してください\n${a.asset_no||''} / ${a.name||''}\n\n空欄にすると「使用者なし」にします。`,a.user_name||'');
     if(value===null)return;
     const name=value.trim();
     const payload={user_name:name||null};
     if(name&&a.status==='未使用')payload.status='使用中';
     if(!name&&a.status==='使用中')payload.status='未使用';
-
     const {error:updateError}=await c.from('assets').update(payload).eq('id',a.id);
     if(updateError){alert('使用者を更新できませんでした: '+updateError.message);return;}
     location.reload();
   }
 
+  function removeDuplicates(actions){
+    const buttons=[...actions.querySelectorAll('button')].filter(b=>b.id==='currentUserQuickEditBtn'||b.textContent.trim()==='使用者変更');
+    buttons.slice(1).forEach(b=>b.remove());
+    if(buttons[0])buttons[0].id='currentUserQuickEditBtn';
+    return buttons[0]||null;
+  }
+
   async function addButton(){
     const detail=document.getElementById('detailDialog');
     const actions=document.querySelector('#assetDetail .dialog-actions');
-    if(!detail||!detail.open||!actions||document.getElementById('currentUserQuickEditBtn'))return;
-    if(!(await canEdit()))return;
-
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.id='currentUserQuickEditBtn';
-    btn.className='secondary';
-    btn.textContent='使用者変更';
-    btn.style.minHeight='48px';
-    btn.addEventListener('click',editCurrentUser);
-    const qr=document.getElementById('qrBtn');
-    actions.insertBefore(btn,qr||null);
+    if(!detail||!detail.open||!actions)return;
+    if(removeDuplicates(actions))return;
+    if(adding)return;
+    adding=true;
+    try{
+      if(!(await canEdit()))return;
+      if(removeDuplicates(actions))return;
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.id='currentUserQuickEditBtn';
+      btn.className='secondary';
+      btn.textContent='使用者変更';
+      btn.style.minHeight='48px';
+      btn.addEventListener('click',editCurrentUser);
+      const qr=document.getElementById('qrBtn');
+      actions.insertBefore(btn,qr||null);
+    } finally {
+      adding=false;
+    }
   }
 
   document.addEventListener('click',e=>{
