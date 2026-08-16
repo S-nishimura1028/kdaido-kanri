@@ -52,3 +52,11 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
   s.defer=true;
   document.head.appendChild(s);
 })();
+
+// 備品登録の×・キャンセルでは必須入力チェックを発生させず、そのまま閉じる。
+(function loadAssetDialogCancelFix(){
+  const s=document.createElement('script');
+  s.src='js/asset-dialog-cancel.js?v=20260816-1';
+  s.defer=true;
+  document.head.appendChild(s);
+})();
