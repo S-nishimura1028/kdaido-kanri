@@ -1,0 +1,39 @@
+name: Inject Access And Admin Controls
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inject-access-admin.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject scripts and admin login labels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('<h1>熊本大同青果｜備品管理</h1>\n      <p>家電・備品・購入品を安全に一元管理</p>', '<h1>熊本大同青果｜備品管理</h1>\n      <p>管理者ログイン</p>')
+          s=s.replace('<button class="primary full" type="submit">ログイン</button>', '<button class="primary full" type="submit">管理者ログイン</button>')
+          old='''  <script src="js/config.js"></script>\n  <script src="js/app.js"></script>'''
+          new='''  <script src="js/config.js"></script>\n  <script src="js/public-asset.js"></script>\n  <script src="js/app.js"></script>\n  <script src="js/admin-master.js"></script>'''
+          if 'js/public-asset.js' not in s:
+              if old not in s: raise SystemExit('script insertion target not found')
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit change
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Enable public QR view and admin master editing'
+          git push
