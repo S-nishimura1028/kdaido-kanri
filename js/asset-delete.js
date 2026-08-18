@@ -56,7 +56,7 @@
       const id=await resolveAssetId();
       if(!id)throw new Error('削除する備品を特定できませんでした。いったん備品一覧から開き直してください。');
 
-      const {error}=await c.from('assets').update({is_deleted:true,deleted_at:new Date().toISOString()}).eq('id',id);
+      const {error}=await c.rpc('soft_delete_asset',{p_asset_id:id});
       if(error)throw error;
 
       document.getElementById('detailDialog')?.close();
