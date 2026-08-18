@@ -64,7 +64,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 備品詳細からテスト備品などを削除。DB上は履歴を残すソフト削除。
 (function loadAssetDelete(){
   const s=document.createElement('script');
-  s.src='js/asset-delete.js?v=20260818-1';
+  s.src='js/asset-delete.js?v=20260818-2';
   s.defer=true;
   document.head.appendChild(s);
 })();
