@@ -3,6 +3,7 @@
 
   let client=null;
   let currentAssetId=null;
+  let observer=null;
 
   function db(){
     if(client)return client;
@@ -23,15 +24,24 @@
     return '';
   }
 
-  function resolveAssetId(){
+  async function resolveAssetId(){
+    try{
+      const fromUrl=new URL(location.href).searchParams.get('asset');
+      if(fromUrl)return fromUrl;
+    }catch(_e){}
+
     if(currentAssetId)return currentAssetId;
-    try{return new URL(location.href).searchParams.get('asset')||null;}catch(_e){return null;}
+
+    const assetNo=detailValue('管理No.');
+    if(!assetNo)return null;
+    const c=db();
+    if(!c)return null;
+    const {data,error}=await c.from('assets').select('id').eq('asset_no',assetNo).eq('is_deleted',false).maybeSingle();
+    if(error)throw error;
+    return data?.id||null;
   }
 
   async function deleteAsset(button){
-    const id=resolveAssetId();
-    if(!id){alert('削除する備品を特定できませんでした。いったん備品一覧から開き直してください。');return;}
-
     const assetNo=detailValue('管理No.')||'（番号なし）';
     const assetName=detailValue('名称')||'この備品';
     const ok=confirm(`${assetNo} / ${assetName}\n\nこの備品を削除しますか？\n一覧・ダッシュボード・QR閲覧からは表示されなくなります。\n変更履歴は残ります。`);
@@ -43,6 +53,9 @@
     try{
       const c=db();
       if(!c)throw new Error('Supabaseに接続できません。');
+      const id=await resolveAssetId();
+      if(!id)throw new Error('削除する備品を特定できませんでした。いったん備品一覧から開き直してください。');
+
       const {error}=await c.from('assets').update({is_deleted:true,deleted_at:new Date().toISOString()}).eq('id',id);
       if(error)throw error;
 
@@ -86,10 +99,18 @@
     if(row?.dataset?.id)currentAssetId=row.dataset.id;
   },true);
 
-  const observer=new MutationObserver(()=>addDeleteButton());
-  window.addEventListener('DOMContentLoaded',()=>{
+  function start(){
     const detail=document.getElementById('assetDetail');
-    if(detail)observer.observe(detail,{childList:true,subtree:true});
+    if(!detail)return;
+    if(observer)observer.disconnect();
+    observer=new MutationObserver(()=>addDeleteButton());
+    observer.observe(detail,{childList:true,subtree:true});
     addDeleteButton();
-  });
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
 })();
