@@ -61,18 +61,18 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
   document.head.appendChild(s);
 })();
 
-// 管理No.と取得年月日は任意入力にする。
-(function loadAssetOptionalFields(){
-  const s=document.createElement('script');
-  s.src='js/asset-optional-fields.js?v=20260819-1';
-  s.defer=true;
-  document.head.appendChild(s);
-})();
-
 // 備品詳細からテスト備品などを削除。DB上は履歴を残すソフト削除。
 (function loadAssetDelete(){
   const s=document.createElement('script');
   s.src='js/asset-delete.js?v=20260819-1';
+  s.defer=true;
+  document.head.appendChild(s);
+})();
+
+// 備品一覧ではカテゴリ列とカテゴリ絞り込みを表示しない。
+(function loadAssetListCleanup(){
+  const s=document.createElement('script');
+  s.src='js/asset-list-cleanup.js?v=20260819-1';
   s.defer=true;
   document.head.appendChild(s);
 })();
