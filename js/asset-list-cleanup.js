@@ -14,26 +14,33 @@
     if(panel)panel.style.display='none';
   }
 
-  function stripCategoryColumn(targetId){
+  function cleanSearchPlaceholder(){
+    const input=document.getElementById('assetSearch');
+    if(input)input.placeholder='備品名・メーカー・型番で検索';
+  }
+
+  function stripColumns(targetId){
     const root=document.getElementById(targetId);
     const table=root?.querySelector('table');
     if(!table)return;
 
-    const headers=Array.from(table.querySelectorAll('thead th'));
-    const categoryIndex=headers.findIndex(th=>(th.textContent||'').trim()==='カテゴリ');
-    if(categoryIndex<0)return;
-
-    table.querySelectorAll('tr').forEach(tr=>{
-      const cell=tr.children[categoryIndex];
-      if(cell)cell.remove();
+    ['備品番号','カテゴリ'].forEach(label=>{
+      const headers=Array.from(table.querySelectorAll('thead th'));
+      const index=headers.findIndex(th=>(th.textContent||'').trim()===label);
+      if(index<0)return;
+      table.querySelectorAll('tr').forEach(tr=>{
+        const cell=tr.children[index];
+        if(cell)cell.remove();
+      });
     });
   }
 
   function apply(){
     hideCategoryFilter();
     hideAdminCategory();
-    stripCategoryColumn('assetTable');
-    stripCategoryColumn('recentAssets');
+    cleanSearchPlaceholder();
+    stripColumns('assetTable');
+    stripColumns('recentAssets');
   }
 
   const observer=new MutationObserver(()=>apply());
