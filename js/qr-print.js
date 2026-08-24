@@ -2,7 +2,30 @@
   'use strict';
 
   function esc(v){
-    return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
+    return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+
+  let client=null;
+  let activeAssetId=null;
+
+  function db(){
+    if(client)return client;
+    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
+    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
+    return client;
+  }
+
+  async function fetchAssetPrintInfo(id,fallbackName){
+    if(!id)return {name:fallbackName||'備品',user_name:null};
+    const c=db();
+    if(!c)return {name:fallbackName||'備品',user_name:null};
+    try{
+      const {data,error}=await c.from('assets').select('id,name,user_name').eq('id',id).single();
+      if(error||!data)return {name:fallbackName||'備品',user_name:null};
+      return {name:data.name||fallbackName||'備品',user_name:data.user_name||null};
+    }catch(_e){
+      return {name:fallbackName||'備品',user_name:null};
+    }
   }
 
   function addPrintButton(){
@@ -19,14 +42,15 @@
     btn.className='primary';
     btn.textContent='このQRを印刷';
     btn.style.minHeight='46px';
-    btn.addEventListener('click',function(){
+    btn.addEventListener('click',async function(){
       const err=document.getElementById('qrError');
       if(!canvas.width){ if(err) err.textContent='先にQRコードを表示してください。'; return; }
       const title=(area.querySelector('div')?.textContent||'備品QR').trim();
       const parts=title.split('/').map(s=>s.trim()).filter(Boolean);
-      const name=parts.length>1?parts.slice(1).join(' / '):parts[0]||'備品';
+      const fallbackName=parts.length>1?parts.slice(1).join(' / '):parts[0]||'備品';
+      const info=await fetchAssetPrintInfo(activeAssetId,fallbackName);
       const img=canvas.toDataURL('image/png');
-      printSingle(name,img,err);
+      printSingle(info.name,info.user_name,img,err);
     });
 
     const hint=document.createElement('div');
@@ -38,10 +62,11 @@
     area.insertBefore(wrap,document.getElementById('qrError'));
   }
 
-  function printSingle(name,img,err){
+  function printSingle(name,userName,img,err){
     const w=window.open('','_blank');
     if(!w){ if(err) err.textContent='印刷画面を開けませんでした。ポップアップを許可してください。'; return; }
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(name)} QR印刷</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;margin:0;color:#111}.sheet{display:flex;justify-content:center;align-items:flex-start}.label{width:72mm;min-height:88mm;border:1.5px solid #111;border-radius:4mm;padding:6mm;text-align:center}.company{font-size:11pt;font-weight:800;margin-bottom:3mm}.name{font-size:13pt;font-weight:700;margin:2mm 0 3mm}.qr{width:48mm;height:48mm;image-rendering:pixelated}.hint{font-size:8pt;color:#555;margin-top:2mm}@media print{button{display:none}}</style></head><body><div class="sheet"><div class="label"><div class="company">熊本大同青果｜備品管理</div><div class="name">${esc(name)}</div><img class="qr" src="${img}" alt="QR"><div class="hint">スマートフォンで読み取ると備品詳細が開きます</div></div></div><script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
+    const user=userName||'未使用';
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(name)} QR印刷</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;margin:0;color:#111}.sheet{display:flex;justify-content:center;align-items:flex-start}.label{width:72mm;min-height:88mm;border:1.5px solid #111;border-radius:4mm;padding:6mm;text-align:center}.company{font-size:11pt;font-weight:800;margin-bottom:3mm}.name{font-size:13pt;font-weight:700;margin:2mm 0 1.5mm}.user{font-size:10pt;font-weight:700;margin:0 0 2.5mm;color:#334155}.qr{width:48mm;height:48mm;image-rendering:pixelated}.hint{font-size:8pt;color:#555;margin-top:2mm}@media print{button{display:none}}</style></head><body><div class="sheet"><div class="label"><div class="company">熊本大同青果｜備品管理</div><div class="name">${esc(name)}</div><div class="user">使用者：${esc(user)}</div><img class="qr" src="${img}" alt="QR"><div class="hint">スマートフォンで読み取ると備品詳細が開きます</div></div></div><script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
     w.document.close();
   }
 
@@ -137,6 +162,20 @@
     return pages;
   }
 
+  async function loadSelectedAssetInfo(selected){
+    const ids=selected.map(cb=>cb.dataset.id).filter(Boolean);
+    const fallback=new Map(selected.map(cb=>[cb.dataset.id,{name:cb.dataset.name||'備品',user_name:null}]));
+    if(!ids.length)return fallback;
+    const c=db();
+    if(!c)return fallback;
+    try{
+      const {data,error}=await c.from('assets').select('id,name,user_name').in('id',ids);
+      if(error)return fallback;
+      (data||[]).forEach(a=>fallback.set(String(a.id),{name:a.name||fallback.get(String(a.id))?.name||'備品',user_name:a.user_name||null}));
+    }catch(_e){}
+    return fallback;
+  }
+
   async function printSelectedAssets(){
     const selected=[...document.querySelectorAll('#assetTable .qr-row-check:checked')];
     if(!selected.length){ alert('印刷する備品にチェックを入れてください。'); return; }
@@ -145,6 +184,7 @@
     const startPosition=chooseStartPosition();
     if(startPosition===null)return;
 
+    const infoMap=await loadSelectedAssetInfo(selected);
     const labels=[];
     for(const cb of selected){
       const url=new URL(window.APP_BASE_URL||location.origin+location.pathname);
@@ -153,7 +193,8 @@
       url.searchParams.set('asset',cb.dataset.id);
       const c=document.createElement('canvas');
       await QRCode.toCanvas(c,url.toString(),{width:240,margin:1,errorCorrectionLevel:'M'});
-      labels.push({name:cb.dataset.name||'備品',img:c.toDataURL('image/png')});
+      const info=infoMap.get(cb.dataset.id)||{name:cb.dataset.name||'備品',user_name:null};
+      labels.push({name:info.name||'備品',user_name:info.user_name||null,img:c.toDataURL('image/png')});
     }
 
     const pages=buildPages(labels,startPosition);
@@ -161,8 +202,8 @@
     if(!w){ alert('印刷画面を開けませんでした。ポップアップを許可してください。'); return; }
 
     const pageHtml=pages.map((slots,pageIndex)=>{
-      const cells=slots.map((x,i)=>x
-        ?`<div class="label"><div class="company">熊本大同青果</div><div class="name">${esc(x.name)}</div><img class="qr" src="${x.img}" alt="QR"><div class="hint">備品詳細QR</div></div>`
+      const cells=slots.map(x=>x
+        ?`<div class="label"><div class="company">熊本大同青果</div><div class="name">${esc(x.name)}</div><div class="user">使用者：${esc(x.user_name||'未使用')}</div><img class="qr" src="${x.img}" alt="QR"><div class="hint">備品詳細QR</div></div>`
         :'<div class="label blank"></div>').join('');
       return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
     }).join('');
@@ -175,7 +216,8 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
 .label{width:50mm;height:71.75mm;padding:3mm 2.5mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;border:.2mm solid transparent}
 .blank{visibility:hidden}
 .company{font-size:7.5pt;font-weight:800;line-height:1.15;margin-bottom:1.2mm;white-space:nowrap}
-.name{font-size:9pt;font-weight:800;line-height:1.2;height:10mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word;margin-bottom:1mm}
+.name{font-size:9pt;font-weight:800;line-height:1.2;height:8mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word;margin-bottom:.6mm}
+.user{font-size:7pt;font-weight:700;line-height:1.15;height:5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:.8mm;color:#334155}
 .qr{width:31mm;height:31mm;image-rendering:pixelated;flex:0 0 auto}
 .hint{font-size:6pt;color:#555;margin-top:1mm}
 .page-break{break-after:page;page-break-after:always}
@@ -195,6 +237,14 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
       enhanceAssetTable();
     });
   }
+
+  document.addEventListener('click',e=>{
+    const row=e.target.closest('tr[data-id]');
+    if(row?.dataset.id)activeAssetId=row.dataset.id;
+  },true);
+
+  const urlAssetId=new URL(location.href).searchParams.get('asset');
+  if(urlAssetId)activeAssetId=urlAssetId;
 
   const observer=new MutationObserver(scheduleEnhance);
   observer.observe(document.documentElement,{childList:true,subtree:true});
