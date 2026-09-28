@@ -74,6 +74,42 @@
     return out;
   }
 
+  function openAdminPasswordDialog(target){
+    document.getElementById('adminPasswordOverlay')?.remove();
+    const overlay=document.createElement('div');overlay.id='adminPasswordOverlay';overlay.className='admin-create-overlay';
+    const card=document.createElement('div');card.className='admin-create-card';
+    card.innerHTML=`<h3>管理者パスワード変更</h3><p><strong>${esc(target.name||'管理者')}</strong><br>${esc(target.email||'')}</p><div class="password-line"><label style="margin:0">新しいパスワード<input id="adminResetPassword" type="password" autocomplete="new-password" placeholder="8文字以上"></label><button type="button" class="secondary" id="generateResetPasswordBtn">自動生成</button></div><label style="margin-top:12px">確認入力<input id="adminResetPasswordConfirm" type="password" autocomplete="new-password" placeholder="もう一度入力"></label><div style="font-size:12px;color:var(--muted);margin-top:7px">変更後は新しいパスワードを本人へ安全な方法で伝えてください。</div><div id="adminResetError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminResetBtn">キャンセル</button><button type="button" class="primary" id="saveAdminResetBtn">パスワード変更</button></div>`;
+    overlay.appendChild(card);document.body.appendChild(overlay);
+    const password=card.querySelector('#adminResetPassword');
+    const confirmPw=card.querySelector('#adminResetPasswordConfirm');
+    const err=card.querySelector('#adminResetError');
+    const save=card.querySelector('#saveAdminResetBtn');
+    card.querySelector('#generateResetPasswordBtn').onclick=()=>{const pw=generatePassword();password.type='text';confirmPw.type='text';password.value=pw;confirmPw.value=pw;password.focus();password.select();};
+    card.querySelector('#cancelAdminResetBtn').onclick=()=>overlay.remove();
+    overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+    save.onclick=async()=>{
+      err.textContent='';
+      const pw=password.value,cpw=confirmPw.value;
+      if(pw.length<8){err.textContent='新しいパスワードは8文字以上にしてください。';password.focus();return;}
+      if(pw!==cpw){err.textContent='確認用パスワードが一致しません。';confirmPw.focus();return;}
+      save.disabled=true;save.textContent='変更中…';
+      try{
+        const c=db();if(!c)throw new Error('Supabaseに接続できません。');
+        const {data:sessionData,error:sessionError}=await c.auth.getSession();
+        if(sessionError)throw sessionError;
+        const token=sessionData?.session?.access_token;
+        if(!token)throw new Error('ログイン情報を確認できません。再ログインしてください。');
+        const {data,error}=await c.functions.invoke('admin-users',{body:{action:'reset_password',target_user_id:target.id,password:pw},headers:{Authorization:`Bearer ${token}`}});
+        if(error){let message=error.message||'パスワードを変更できませんでした。';try{const details=await error.context?.json?.();if(details?.error)message=details.error;}catch(_e){}throw new Error(message);}
+        if(data?.error)throw new Error(data.error);
+        alert(`${target.name||target.email||'管理者'} のパスワードを変更しました。\n新しいパスワードを本人へ伝えてください。`);
+        overlay.remove();
+      }catch(e){err.textContent=e.message||'パスワードを変更できませんでした。';}
+      finally{if(document.body.contains(save)){save.disabled=false;save.textContent='パスワード変更';}}
+    };
+    password.focus();
+  }
+
   function openAdminCreateDialog(){
     document.getElementById('adminCreateOverlay')?.remove();
     const overlay=document.createElement('div');overlay.id='adminCreateOverlay';overlay.className='admin-create-overlay';
@@ -114,11 +150,13 @@
     const panel=host.closest('.panel');const h=panel?.querySelector('.panel-head h3');if(h)h.textContent='管理者アカウント';
     ensureAdminCreateButton();
     const c=db();
+    const {data:{session}}=await c.auth.getSession();
+    const currentId=session?.user?.id||'';
     const {data,error}=await c.from('profiles').select('id,name,email,role').order('name');
     if(error){host.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
     const rows=data||[];
     host.innerHTML=`<div class="admin-account-note">管理者はこの画面から別の管理者アカウントを追加できます。一般社員はアカウントを作らず、QRコードから閲覧します。</div>`+
-      (rows.length?rows.map(x=>`<div class="master-row" data-profile-row="${x.id}"><span><strong>${esc(x.name||'名称未設定')}</strong><small class="admin-account-meta">${esc(x.email||'メール未設定')}</small></span><div class="master-actions">${x.role==='admin'?`<span class="badge use">管理者</span><button type="button" class="master-mini profile-name-edit" data-id="${x.id}" data-name="${esc(x.name||'')}">名前編集</button>`:`<span class="badge">旧権限: ${esc(x.role||'未設定')}</span><button type="button" class="master-mini promote profile-promote" data-id="${x.id}" data-name="${esc(x.name||x.email||'このアカウント')}">管理者にする</button>`}</div></div>`).join(''):'<div class="empty">アカウントはありません。</div>');
+      (rows.length?rows.map(x=>`<div class="master-row" data-profile-row="${x.id}"><span><strong>${esc(x.name||'名称未設定')}</strong><small class="admin-account-meta">${esc(x.email||'メール未設定')}</small></span><div class="master-actions">${x.role==='admin'?`<span class="badge use">管理者</span><button type="button" class="master-mini profile-name-edit" data-id="${x.id}" data-name="${esc(x.name||'')}">名前編集</button>${x.id!==currentId?`<button type="button" class="master-mini profile-password-reset" data-id="${x.id}" data-name="${esc(x.name||'')}" data-email="${esc(x.email||'')}">パスワード変更</button>`:''}`:`<span class="badge">旧権限: ${esc(x.role||'未設定')}</span><button type="button" class="master-mini promote profile-promote" data-id="${x.id}" data-name="${esc(x.name||x.email||'このアカウント')}">管理者にする</button>`}</div></div>`).join(''):'<div class="empty">アカウントはありません。</div>');
   }
 
   async function renderUsers(){
@@ -184,6 +222,11 @@
       if(!confirm(`「${promote.dataset.name}」を管理者にしますか？\n管理者は備品・履歴・管理画面をすべて編集できます。`))return;
       const c=db();const {error}=await c.from('profiles').update({role:'admin'}).eq('id',promote.dataset.id);
       if(error){alert('管理者に変更できませんでした: '+error.message);return;}await render();return;
+    }
+    const passwordReset=e.target.closest('.profile-password-reset');
+    if(passwordReset){
+      openAdminPasswordDialog({id:passwordReset.dataset.id,name:passwordReset.dataset.name||'管理者',email:passwordReset.dataset.email||''});
+      return;
     }
     const nameEdit=e.target.closest('.profile-name-edit');
     if(nameEdit){
