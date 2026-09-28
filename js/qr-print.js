@@ -84,10 +84,11 @@
     if(headRow&&!headRow.querySelector('.qr-select-head')){
       const th=document.createElement('th');
       th.className='qr-select-head';
-      th.style.cssText='width:42px;text-align:center';
+      th.style.cssText='width:58px;min-width:58px;text-align:center';
       const all=document.createElement('input');
       all.type='checkbox';
       all.title='すべて選択';
+      all.style.cssText='width:24px;height:24px;cursor:pointer;vertical-align:middle';
       all.addEventListener('click',e=>e.stopPropagation());
       all.addEventListener('change',()=>{
         table.querySelectorAll('.qr-row-check').forEach(c=>c.checked=all.checked);
@@ -101,10 +102,11 @@
       if(row.querySelector('.qr-select-cell')) return;
       const td=document.createElement('td');
       td.className='qr-select-cell';
-      td.style.textAlign='center';
+      td.style.cssText='text-align:center;width:58px;min-width:58px';
       const cb=document.createElement('input');
       cb.type='checkbox';
       cb.className='qr-row-check';
+      cb.style.cssText='width:24px;height:24px;cursor:pointer;vertical-align:middle';
       cb.dataset.id=row.dataset.id||'';
       const nameIndex=headerIndex(table,'備品名');
       const offset=headRow?.querySelector('.qr-select-head')?1:0;
@@ -122,16 +124,27 @@
 
   function addBatchButton(host){
     if(document.getElementById('qrBatchPrintBtn')) return;
-    const toolbar=host.closest('.panel')?.querySelector('.toolbar') || host.parentElement;
-    if(!toolbar) return;
+    const parent=host.parentElement;
+    if(!parent) return;
+
+    const bar=document.createElement('div');
+    bar.id='qrBatchPrintBar';
+    bar.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:0 0 14px;padding:10px 12px;background:#f8fbfd;border:1px solid #dbe7ee;border-radius:12px';
+
+    const note=document.createElement('div');
+    note.textContent='印刷する備品にチェックを入れてください';
+    note.style.cssText='margin-right:auto;font-size:13px;color:#64748b;font-weight:600';
+
     const btn=document.createElement('button');
     btn.type='button';
     btn.id='qrBatchPrintBtn';
-    btn.className='secondary';
-    btn.style.minHeight='46px';
+    btn.className='primary';
+    btn.style.cssText='min-height:48px;padding:0 20px;font-weight:800';
     btn.textContent='QRまとめ印刷';
     btn.addEventListener('click',printSelectedAssets);
-    toolbar.appendChild(btn);
+
+    bar.append(note,btn);
+    parent.insertBefore(bar,host);
   }
 
   function updateBatchButton(){
