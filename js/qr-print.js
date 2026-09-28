@@ -55,7 +55,7 @@
 
     const hint=document.createElement('div');
     hint.style.cssText='width:100%;font-size:11px;color:#64748b;margin-top:2px';
-    hint.textContent='複数印刷は備品一覧でチェックして「QRまとめ印刷」を使います。A4・4列×4段の16面固定です。';
+    hint.textContent='複数印刷は備品一覧でチェックして「QRまとめ印刷」を使います。アスクル AR90786（A4・24面）専用です。';
 
     wrap.appendChild(btn);
     wrap.appendChild(hint);
@@ -63,11 +63,12 @@
   }
 
   function printSingle(name,userName,img,err){
+    const startPosition=chooseStartPosition();
+    if(startPosition===null)return;
     const w=window.open('','_blank');
     if(!w){ if(err) err.textContent='印刷画面を開けませんでした。ポップアップを許可してください。'; return; }
-    const user=userName||'未使用';
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(name)} QR印刷</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;margin:0;color:#111}.sheet{display:flex;justify-content:center;align-items:flex-start}.label{width:72mm;min-height:88mm;border:1.5px solid #111;border-radius:4mm;padding:6mm;text-align:center}.company{font-size:11pt;font-weight:800;margin-bottom:3mm}.name{font-size:13pt;font-weight:700;margin:2mm 0 1.5mm}.user{font-size:10pt;font-weight:700;margin:0 0 2.5mm;color:#334155}.qr{width:48mm;height:48mm;image-rendering:pixelated}.hint{font-size:8pt;color:#555;margin-top:2mm}@media print{button{display:none}}</style></head><body><div class="sheet"><div class="label"><div class="company">熊本大同青果｜備品管理</div><div class="name">${esc(name)}</div><div class="user">使用者：${esc(user)}</div><img class="qr" src="${img}" alt="QR"><div class="hint">スマートフォンで読み取ると備品詳細が開きます</div></div></div><script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
-    w.document.close();
+    const labels=[{name:name||'備品',user_name:userName||null,img}];
+    writeLabelPrintWindow(w,labels,startPosition,`${name||'備品'} QR印刷`);
   }
 
   function headerIndex(table,label){
@@ -197,34 +198,9 @@
       labels.push({name:info.name||'備品',user_name:info.user_name||null,img:c.toDataURL('image/png')});
     }
 
-    const pages=buildPages(labels,startPosition);
     const w=window.open('','_blank');
     if(!w){ alert('印刷画面を開けませんでした。ポップアップを許可してください。'); return; }
-
-    const pageHtml=pages.map((slots,pageIndex)=>{
-      const cells=slots.map(x=>x
-        ?`<div class="label"><div class="company">熊本大同青果</div><div class="name">${esc(x.name)}</div><div class="user">使用者：${esc(x.user_name||'未使用')}</div><img class="qr" src="${x.img}" alt="QR"><div class="hint">備品詳細QR</div></div>`
-        :'<div class="label blank"></div>').join('');
-      return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
-    }).join('');
-
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>備品QR 16面印刷</title><style>
-@page{size:A4 portrait;margin:5mm}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
-.sheet{width:200mm;height:287mm;display:grid;grid-template-columns:repeat(4,50mm);grid-template-rows:repeat(4,71.75mm);gap:0;margin:0 auto}
-.label{width:50mm;height:71.75mm;padding:3mm 2.5mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;border:.2mm solid transparent}
-.blank{visibility:hidden}
-.company{font-size:7.5pt;font-weight:800;line-height:1.15;margin-bottom:1.2mm;white-space:nowrap}
-.name{font-size:9pt;font-weight:800;line-height:1.2;height:8mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word;margin-bottom:.6mm}
-.user{font-size:7pt;font-weight:700;line-height:1.15;height:5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:.8mm;color:#334155}
-.qr{width:31mm;height:31mm;image-rendering:pixelated;flex:0 0 auto}
-.hint{font-size:6pt;color:#555;margin-top:1mm}
-.page-break{break-after:page;page-break-after:always}
-@media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{border:0}}
-</style></head><body>${pageHtml}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
-    w.document.close();
+    writeLabelPrintWindow(w,labels,startPosition,'備品QR AR90786・24面印刷');
   }
 
   let scheduled=false;
