@@ -142,10 +142,10 @@
   }
 
   function chooseStartPosition(){
-    const raw=window.prompt('印刷を開始するシール位置を1〜16で入力してください。\n左上が1、右へ2・3・4、次の段が5〜8です。','1');
+    const raw=window.prompt('印刷を開始するシール位置を1〜24で入力してください。\nAR90786は左上が1、右へ2・3、次の段が4〜6です。','1');
     if(raw===null)return null;
     const n=Number(raw);
-    if(!Number.isInteger(n)||n<1||n>16){alert('開始位置は1〜16で入力してください。');return null;}
+    if(!Number.isInteger(n)||n<1||n>24){alert('開始位置は1〜24で入力してください。');return null;}
     return n;
   }
 
@@ -213,22 +213,36 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
     const startPosition=chooseStartPosition();
     if(startPosition===null)return;
 
-    const infoMap=await loadSelectedAssetInfo(selected);
-    const labels=[];
-    for(const cb of selected){
-      const url=new URL(window.APP_BASE_URL||location.origin+location.pathname);
-      url.pathname='/';
-      url.search='';
-      url.searchParams.set('asset',cb.dataset.id);
-      const c=document.createElement('canvas');
-      await QRCode.toCanvas(c,url.toString(),{width:240,margin:1,errorCorrectionLevel:'M'});
-      const info=infoMap.get(cb.dataset.id)||{name:cb.dataset.name||'備品',user_name:null};
-      labels.push({name:info.name||'備品',user_name:info.user_name||null,img:c.toDataURL('image/png')});
-    }
-
+    // ブラウザのポップアップ制限対策：クリック直後に印刷タブを先に開く
     const w=window.open('','_blank');
     if(!w){ alert('印刷画面を開けませんでした。ポップアップを許可してください。'); return; }
-    writeLabelPrintWindow(w,labels,startPosition,'備品QR AR90786・24面印刷');
+    w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>印刷準備中</title></head><body style="font-family:sans-serif;padding:24px">QRを準備しています…</body></html>');
+    w.document.close();
+
+    try{
+      const infoMap=await loadSelectedAssetInfo(selected);
+      const labels=[];
+      for(const cb of selected){
+        const url=new URL(window.APP_BASE_URL||location.origin+location.pathname);
+        url.pathname='/';
+        url.search='';
+        url.searchParams.set('asset',cb.dataset.id);
+        const c=document.createElement('canvas');
+        await QRCode.toCanvas(c,url.toString(),{width:240,margin:1,errorCorrectionLevel:'M'});
+        const info=infoMap.get(cb.dataset.id)||{name:cb.dataset.name||'備品',user_name:null};
+        labels.push({name:info.name||'備品',user_name:info.user_name||null,img:c.toDataURL('image/png')});
+      }
+      w.document.open();
+      writeLabelPrintWindow(w,labels,startPosition,'備品QR AR90786・24面印刷');
+    }catch(err){
+      console.error('QRまとめ印刷',err);
+      try{
+        w.document.open();
+        w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>印刷エラー</title></head><body style="font-family:sans-serif;padding:24px"><h2>印刷データを作成できませんでした</h2><p>'+esc(err&&err.message?err.message:'不明なエラー')+'</p></body></html>');
+        w.document.close();
+      }catch(_e){}
+      alert('QRまとめ印刷の準備中にエラーが発生しました。');
+    }
   }
 
   let scheduled=false;
