@@ -154,13 +154,41 @@
     let index=0;
     let first=true;
     while(index<labels.length){
-      const slots=new Array(16).fill(null);
+      const slots=new Array(24).fill(null);
       let pos=first?startPosition-1:0;
-      while(pos<16&&index<labels.length){slots[pos++]=labels[index++];}
+      while(pos<24&&index<labels.length){slots[pos++]=labels[index++];}
       pages.push(slots);
       first=false;
     }
     return pages;
+  }
+
+  function writeLabelPrintWindow(w,labels,startPosition,title){
+    const pages=buildPages(labels,startPosition);
+    const pageHtml=pages.map((slots,pageIndex)=>{
+      const cells=slots.map(x=>x
+        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="name">${esc(x.name)}</div><div class="user">使用者：${esc(x.user_name||'未使用')}</div></div></div>`
+        :'<div class="label blank"></div>').join('');
+      return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
+    }).join('');
+
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(title||'備品QR AR90786印刷')}</title><style>
+@page{size:A4 portrait;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+.sheet{width:210mm;height:297mm;padding:12.9mm 6mm;display:grid;grid-template-columns:repeat(3,66mm);grid-template-rows:repeat(8,33.9mm);gap:0;margin:0 auto;overflow:hidden}
+.label{width:66mm;height:33.9mm;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.label-inner{position:absolute;left:50%;top:50%;width:33.9mm;height:66mm;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center;padding:1.6mm 1.4mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.blank{visibility:hidden}
+.company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
+.qr{width:22mm;height:22mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.7mm}
+.name{font-size:7.4pt;font-weight:800;line-height:1.12;min-height:7.5mm;max-height:9.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
+.user{font-size:6.2pt;font-weight:700;line-height:1.1;max-height:5.5mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#334155;margin-top:.4mm}
+.page-break{break-after:page;page-break-after:always}
+@media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
+</style></head><body>${pageHtml}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+    w.document.close();
   }
 
   async function loadSelectedAssetInfo(selected){
