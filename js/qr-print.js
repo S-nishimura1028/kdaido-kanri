@@ -55,7 +55,7 @@
 
     const hint=document.createElement('div');
     hint.style.cssText='width:100%;font-size:11px;color:#64748b;margin-top:2px';
-    hint.textContent='複数印刷は備品一覧でチェックして「QRまとめ印刷」を使います。アスクル AR90786（A4・24面）専用です。';
+    hint.textContent='複数印刷は備品一覧でチェックして「QRまとめ印刷」を使います。インクファクトリー LBLA4-WPG-27（A4・27面）用です。';
 
     wrap.appendChild(btn);
     wrap.appendChild(hint);
@@ -155,10 +155,10 @@
   }
 
   function chooseStartPosition(){
-    const raw=window.prompt('印刷を開始するシール位置を1〜24で入力してください。\nAR90786は左上が1、右へ2・3、次の段が4〜6です。','1');
+    const raw=window.prompt('印刷を開始するシール位置を1〜27で入力してください。\nLBLA4-WPG-27は左上が1、右へ2・3、次の段が4〜6です。','1');
     if(raw===null)return null;
     const n=Number(raw);
-    if(!Number.isInteger(n)||n<1||n>24){alert('開始位置は1〜24で入力してください。');return null;}
+    if(!Number.isInteger(n)||n<1||n>27){alert('開始位置は1〜27で入力してください。');return null;}
     return n;
   }
 
@@ -167,9 +167,9 @@
     let index=0;
     let first=true;
     while(index<labels.length){
-      const slots=new Array(24).fill(null);
+      const slots=new Array(27).fill(null);
       let pos=first?startPosition-1:0;
-      while(pos<24&&index<labels.length){slots[pos++]=labels[index++];}
+      while(pos<27&&index<labels.length){slots[pos++]=labels[index++];}
       pages.push(slots);
       first=false;
     }
@@ -185,18 +185,18 @@
       return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
     }).join('');
 
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(title||'備品QR AR90786印刷')}</title><style>
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(title||'備品QR LBLA4-WPG-27印刷')}</title><style>
 @page{size:A4 portrait;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
-.sheet{width:210mm;height:297mm;padding:12.9mm 6mm;display:grid;grid-template-columns:repeat(3,66mm);grid-template-rows:repeat(8,33.9mm);gap:0;margin:0 auto;overflow:hidden}
-.label{width:66mm;height:33.9mm;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.label-inner{position:absolute;left:50%;top:50%;width:33.9mm;height:66mm;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center;padding:1.6mm 1.4mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.sheet{width:210mm;height:297mm;padding:9mm 7mm;display:grid;grid-template-columns:repeat(3,62mm);grid-template-rows:repeat(9,31mm);column-gap:5mm;row-gap:0;margin:0 auto;overflow:hidden}
+.label{width:62mm;height:31mm;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.label-inner{position:absolute;left:50%;top:50%;width:31mm;height:62mm;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center;padding:1.4mm 1.2mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .blank{visibility:hidden}
 .company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
-.qr{width:22mm;height:22mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.7mm}
-.name{font-size:7.4pt;font-weight:800;line-height:1.12;min-height:7.5mm;max-height:9.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
-.user{font-size:6pt;font-weight:700;line-height:1.08;max-height:5mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#334155;margin-top:.3mm}.location{font-size:5.7pt;font-weight:700;line-height:1.08;max-height:5mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#475569;margin-top:.3mm}
+.qr{width:20mm;height:20mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.6mm}
+.name{font-size:7pt;font-weight:800;line-height:1.1;min-height:7mm;max-height:8.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
+.user{font-size:5.7pt;font-weight:700;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#334155;margin-top:.3mm}.location{font-size:5.4pt;font-weight:700;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#475569;margin-top:.3mm}
 .page-break{break-after:page;page-break-after:always}
 @media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
@@ -246,7 +246,7 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
         labels.push({name:info.name||'備品',user_name:info.user_name||null,location:info.location||null,img:c.toDataURL('image/png')});
       }
       w.document.open();
-      writeLabelPrintWindow(w,labels,startPosition,'備品QR AR90786・24面印刷');
+      writeLabelPrintWindow(w,labels,startPosition,'備品QR LBLA4-WPG-27・27面印刷');
     }catch(err){
       console.error('QRまとめ印刷',err);
       try{
