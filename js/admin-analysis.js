@@ -139,7 +139,7 @@
     const {data:{session}}=await c.auth.getSession();
     if(!session)return;
     const {data:profile}=await c.from('profiles').select('role').eq('id',session.user.id).maybeSingle();
-    if(!['admin','manager'].includes(profile?.role))return;
+    if(profile?.role!=='admin')return;
 
     const {data,error}=await c.from('assets')
       .select('id,asset_no,name,status,location,department,quantity,purchase_price,created_at,updated_at,is_deleted')
