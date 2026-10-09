@@ -19,8 +19,8 @@
   }
 
   function showError(msg){ const el=$('loginError'); if(el) el.textContent=msg; }
-  function roleLabel(r){return ({employee:'一般社員',manager:'管理担当者',admin:'管理者'}[r]||'一般社員')}
-  function isManager(){return ['manager','admin'].includes(profile?.role)}
+  function roleLabel(){return '管理者'}
+  function isManager(){return profile?.role==='admin'}
   function showLogin(){ $('appView').classList.add('hidden'); $('loginView').classList.remove('hidden'); }
 
   async function init(){
@@ -41,10 +41,9 @@
       const r=await db.from('profiles').select('*').eq('id',user.id).maybeSingle();
       if(r.error) throw r.error;
       profile=r.data;
-      if(!profile){
-        const up=await db.from('profiles').upsert({id:user.id,name:user.email?.split('@')[0]||'ユーザー',email:user.email},{onConflict:'id'});
-        if(up.error) throw up.error;
-        profile=(await db.from('profiles').select('*').eq('id',user.id).single()).data;
+      if(!profile || profile.role!=='admin' || profile.is_active!==true){
+        await db.auth.signOut();
+        throw new Error('このアプリは管理者アカウント専用です。現場では備品のQRコードから情報を確認してください。');
       }
       $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
       $('userInfo').textContent=`${profile?.name||user.email} / ${roleLabel(profile?.role)}`;
@@ -182,6 +181,6 @@
     }catch(e){console.error(e);err.textContent=e.message||'QRコードを表示できませんでした。';}
   }
   async function loadHistory(){const r=await db.from('asset_history').select('*').order('created_at',{ascending:false}).limit(200);if(r.error)throw r.error;const rows=r.data||[];$('historyTable').innerHTML=rows.length?`<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${new Date(h.created_at||Date.now()).toLocaleString('ja-JP')}</td><td>${esc(h.asset_id||'-')}</td><td>${esc(h.action||h.event_type||'-')}</td><td>${esc(h.note||h.description||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">履歴はありません。</div>';}
-  async function loadAdmin(){const p=await db.from('profiles').select('*').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span>${esc(x.name)}<small> ${esc(x.email||'')}</small></span><select data-profile="${x.id}" class="role-select"><option value="employee" ${x.role==='employee'?'selected':''}>一般社員</option><option value="manager" ${x.role==='manager'?'selected':''}>管理担当者</option><option value="admin" ${x.role==='admin'?'selected':''}>管理者</option></select></div>`).join('');$('profileTable').querySelectorAll('.role-select').forEach(s=>s.onchange=async()=>{await db.from('profiles').update({role:s.value}).eq('id',s.dataset.profile)});[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
+  async function loadAdmin(){const p=await db.from('profiles').select('id,name,email,role').eq('role','admin').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span><strong>${esc(x.name||'名称未設定')}</strong><small> ${esc(x.email||'')}</small></span><span class="badge use">管理者</span></div>`).join('');[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
   window.addEventListener('DOMContentLoaded',init);
 })();
