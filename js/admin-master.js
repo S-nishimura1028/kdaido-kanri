@@ -31,7 +31,7 @@
       const c=db();if(!c)return;
       const {data:{session}}=await c.auth.getSession();if(!session)return;
       const {data:p}=await c.from('profiles').select('role').eq('id',session.user.id).maybeSingle();
-      if(p&&p.role!=='admin'){
+      if(!p||p.role!=='admin'){
         await c.auth.signOut();
         document.getElementById('appView')?.classList.add('hidden');
         document.getElementById('loginView')?.classList.remove('hidden');
@@ -152,7 +152,7 @@
     const c=db();
     const {data:{session}}=await c.auth.getSession();
     const currentId=session?.user?.id||'';
-    const {data,error}=await c.from('profiles').select('id,name,email,role').order('name');
+    const {data,error}=await c.from('profiles').select('id,name,email,role').eq('role','admin').order('name');
     if(error){host.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
     const rows=data||[];
     host.innerHTML=`<div class="admin-account-note">管理者はこの画面から別の管理者アカウントを追加できます。一般社員はアカウントを作らず、QRコードから閲覧します。</div>`+
