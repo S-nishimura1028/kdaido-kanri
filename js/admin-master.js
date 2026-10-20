@@ -47,7 +47,10 @@
     const s=document.createElement('style');s.id='adminMasterStyle';
     s.textContent=`.master-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.master-mini{border:0;border-radius:8px;padding:7px 10px;font-weight:700;background:#edf4f2;color:#355e55}.master-mini.danger{background:#f8eceb;color:#9b2c22}.master-mini.promote{background:#e8f1fb;color:#075b9b}.master-add{margin-left:auto}.master-row strong{overflow-wrap:anywhere}.admin-account-note{font-size:13px;color:var(--muted);line-height:1.6;padding:2px 0 12px}.admin-account-meta{display:block;color:var(--muted);font-size:12px;margin-top:3px}.user-admin-assets{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5}.user-admin-count{font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;background:#e8f5ec;color:#166534}.admin-create-overlay{position:fixed;inset:0;z-index:4000;background:rgba(4,30,47,.58);display:grid;place-items:center;padding:16px;backdrop-filter:blur(3px)}.admin-create-card{width:min(500px,95vw);background:#fff;border:1px solid #dbe8e3;border-radius:18px;padding:20px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.admin-create-card h3{margin:0 0 6px;color:#173f59}.admin-create-card p{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.6}.admin-create-card label{display:flex;flex-direction:column;gap:7px;font-weight:700;font-size:14px;margin-bottom:12px}.admin-create-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}.admin-create-actions button{min-height:46px}.password-line{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.password-line button{min-height:44px}.admin-create-error{color:var(--danger);font-size:13px;min-height:18px;margin-top:8px}@media(max-width:600px){.password-line{grid-template-columns:1fr}.admin-create-actions{display:grid;grid-template-columns:1fr 1fr}.admin-create-card{padding:18px}}`;
 
-    s.textContent+=`.user-master-panel{grid-column:1/-1;min-width:0}
+    s.textContent+=`.user-master-inline-editor{grid-column:1/-1;scroll-margin-top:24px;margin:0 0 14px 0;position:relative;z-index:1}
+    .user-master-inline-card{width:100%;max-height:none;box-shadow:none;border:2px solid #aacbd9;background:#f8fbfe;border-radius:12px}
+    .user-master-inline-card .admin-create-actions{margin-top:16px}
+    .user-master-panel{grid-column:1/-1;min-width:0}
     .user-master-panel .panel-head{flex-wrap:wrap;align-items:flex-start}
     .user-master-info{font-size:13px;color:var(--muted);line-height:1.65;margin:0 0 15px}
     .user-master-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:0 0 12px}
@@ -85,7 +88,7 @@
     const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
     const panel=document.createElement('div');panel.className='panel user-master-panel';
     panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 実習生を登録</button></div>'+
-      '<p class="user-master-info">氏名・所属部署・居住場所・部屋番号をそれぞれ管理します。「詳細編集」から既存の登録者も変更できます。備品の登録・詳細画面は従来どおりです。</p>'+
+      '<p class="user-master-info">氏名・所属部署・居住場所・部屋番号をそれぞれ管理します。「まとめて編集」を押すと4項目がすぐ下に表示され、その場で一度に変更できます。備品の登録・詳細画面は従来どおりです。</p>'+
       '<div class="user-master-toolbar"><label>名前・部署・居住場所・部屋番号で検索<input id="userMasterSearch" placeholder="例：カイン／薄場寮／205" aria-label="使用者の検索"></label>'+
       '<label>所属部署<select id="userMasterDepartmentFilter"><option value="">すべての部署</option></select></label>'+
       '<label>居住場所<select id="userMasterLocationFilter"><option value="">すべての場所</option></select></label></div>'+
@@ -208,7 +211,7 @@
       return [g.name,g.department,g.location,g.room_number].some(s=>String(s||'').toLocaleLowerCase().includes(q));
     });
     const count=document.getElementById('userMasterCount');
-    if(count)count.textContent='表示中 '+matched.length+'名 / 登録中 '+userGroups.length+'名　｜　各行の「詳細編集」で4項目を変更できます。';
+    if(count)count.textContent='表示中 '+matched.length+'名 / 登録中 '+userGroups.length+'名　｜　各行の「まとめて編集」で4項目を一度に変更できます。';
     if(!matched.length){host.innerHTML='<div class="empty">該当する使用者がいません。</div>';return;}
     host.innerHTML='<div class="user-master-head"><span>実習生の名前</span><span>所属部署</span><span>居住場所</span><span>部屋番号</span><span>紐づく備品</span><span>操作</span></div>'+
       matched.map(({g,index})=>{
@@ -221,7 +224,7 @@
           <div class="user-master-cell" data-label="部屋番号">${value(g.room_number)}</div>
           <div class="user-master-cell" data-label="紐づく備品"><span class="user-admin-count">${g.items.length}件</span>${preview?`<div class="user-master-asset-detail">${preview}</div>`:''}</div>
           <div class="user-master-cell user-master-actions-cell" data-label="操作"><div class="master-actions">
-            <button type="button" class="master-mini user-master-edit" data-index="${index}" title="${esc(g.name)} の詳細編集">詳細編集</button>
+            <button type="button" class="master-mini user-master-edit" data-index="${index}" title="${esc(g.name)} の詳細編集">まとめて編集</button>
             <button type="button" class="master-mini danger user-master-delete" data-index="${index}" title="${esc(g.name)} の削除">削除</button>
           </div></div></div>`;
       }).join('');
@@ -246,10 +249,28 @@
     const departments=[...new Set(userGroups.map(x=>x.department).filter(v=>v&&!/^\d+$/.test(v)))].sort((a,b)=>a.localeCompare(b,'ja'));
     const locations=[...new Set(userGroups.map(x=>x.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
     const options=values=>values.map(v=>`<option value="${esc(v)}"></option>`).join('');
-    const overlay=document.createElement('div');
-    overlay.id='assetUserEditorOverlay';overlay.className='admin-create-overlay';
-    const form=document.createElement('form');form.className='admin-create-card user-editor-card';
-    form.innerHTML=`<h3>${target?'使用者の詳細編集':'実習生を新規登録'}</h3>
+    const existingInline=document.getElementById('assetUserInlineEditor');
+    const existingTargetId=existingInline?.dataset.userId||'';
+    existingInline?.remove();
+    document.getElementById('assetUserEditorOverlay')?.remove();
+    // Editing happens directly below the selected person: no legacy prompt or preliminary dialog.
+    const index=target?userGroups.findIndex(u=>u.id===target.id):-1;
+    const row=target?document.querySelector('#userAdmin .user-master-edit[data-index="'+index+'"]')?.closest('.user-master-row'):null;
+    if(target && !row)return;
+    if(target && existingTargetId===target.id)return; // clicking again closes the editor
+    const host=document.createElement('div');
+    if(target){
+      host.id='assetUserInlineEditor';
+      host.className='user-master-inline-editor';
+      host.dataset.userId=target.id;
+    }else{
+      host.id='assetUserEditorOverlay';
+      host.className='admin-create-overlay';
+    }
+    const form=document.createElement('form');
+    form.className='admin-create-card user-editor-card'+(target?' user-master-inline-card':'');
+    form.setAttribute('aria-label',target?'使用者の一括編集':'実習生の新規登録');
+    form.innerHTML=`<h3>${target?'使用者情報をまとめて編集':'実習生を新規登録'}</h3>
       <p>名前・所属部署・居住場所・部屋番号をまとめて設定できます。</p>
       <div class="user-editor-grid">
         <label>実習生の名前 <span style="color:#b42318">*</span><input name="userName" required maxlength="100" placeholder="例：カイン" autocomplete="off"></label>
@@ -265,11 +286,13 @@
     field('userDepartment').value=target?.department||'';
     field('userLocation').value=target?.location||'';
     field('userRoom').value=target?.room_number||'';
-    overlay.appendChild(form);document.body.appendChild(overlay);
-    const close=()=>overlay.remove();
+    host.appendChild(form);
+    if(target){row.after(host);}else{document.body.appendChild(host);}
+    const close=()=>host.remove();
     form.querySelector('#cancelAssetUserEditor').onclick=close;
-    overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
-    overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close();}});
+    if(!target)host.addEventListener('click',e=>{if(e.target===host)close();});
+    host.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close();}});
+    if(target)host.scrollIntoView({behavior:'smooth',block:'nearest'});
     form.addEventListener('submit',async e=>{
       e.preventDefault();
       const errorBox=form.querySelector('#assetUserEditorError');
