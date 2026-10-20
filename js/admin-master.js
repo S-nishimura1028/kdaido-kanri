@@ -179,7 +179,7 @@
     host.innerHTML=userGroups.length?userGroups.map((g,i)=>{
       const items=g.items.slice(0,4).map(a=>`${esc(a.asset_no||'-')} ${esc(a.name||'')}`).join('、');
       const more=g.items.length>4?` ほか${g.items.length-4}件`:'';
-      return `<div class="master-row"><span><strong>${esc(g.name)}</strong><small class="user-admin-assets">${esc(g.department||'部署未設定')} / ${esc(g.location||'場所未設定')}</small><small class="user-admin-assets">${items||'現在の紐づき備品なし'}${more}</small></span><div class="master-actions"><span class="user-admin-count">${g.items.length}件</span><input class="user-room-input" data-index="${i}" value="${esc(g.room_number||'')}" placeholder="部屋番号（任意）" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><button type="button" class="master-mini user-room-save" data-index="${i}">部屋保存</button><button type="button" class="master-mini user-master-edit" data-index="${i}">基本情報</button></div></div>`;
+      return `<div class="master-row"><span><strong>${esc(g.name)}</strong><small class="user-admin-assets">${esc(g.department||'部署未設定')} / ${esc(g.location||'場所未設定')}</small><small class="user-admin-assets">${items||'現在の紐づき備品なし'}${more}</small></span><div class="master-actions"><span class="user-admin-count">${g.items.length}件</span><input class="user-room-input" data-index="${i}" value="${esc(g.room_number||'')}" placeholder="部屋番号（任意）" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><button type="button" class="master-mini user-room-save" data-index="${i}">部屋保存</button><button type="button" class="master-mini user-master-edit" data-index="${i}">基本情報</button><button type="button" class="master-mini danger user-master-delete" data-index="${i}" title="備品の割り当てがない使用者のみ削除できます">削除</button></div></div>`;
     }).join(''):'<div class="empty">使用者は登録されていません。</div>';
   }
 
@@ -220,6 +220,50 @@
       const c=db();const {error}=await c.from('asset_users').insert({name:name.trim(),department:department.trim()||null,room_number:room.trim()||null,location:location.trim()||null,is_active:true});
       if(error){alert('使用者を追加できませんでした: '+error.message);return;}
       await renderUsers();return;
+    }
+    const userDelete=e.target.closest('.user-master-delete');
+    if(userDelete){
+      const group=userGroups[Number(userDelete.dataset.index)];
+      if(!group)return;
+      const c=db();
+      if(!c){alert('Supabaseに接続できません。');return;}
+      userDelete.disabled=true;
+      try{
+        // Never unlink equipment implicitly. Include soft-deleted assets to preserve history.
+        const linked=await c.from('assets')
+          .select('asset_no,name')
+          .eq('assigned_user_id',group.id)
+          .limit(5);
+        if(linked.error)throw linked.error;
+        if(linked.data?.length){
+          const examples=linked.data.map(a=>`${a.asset_no||'-'} ${a.name||''}`).join('、');
+          alert(`「${group.name}」は備品が割り当てられているため削除できません。\n先に備品一覧で使用者を変更・解除してください。\n対象例：${examples}`);
+          return;
+        }
+        // Legacy assets with only a text user_name also need a manual review.
+        const legacy=await c.from('assets')
+          .select('asset_no,name')
+          .is('assigned_user_id',null)
+          .eq('user_name',group.name)
+          .eq('is_deleted',false)
+          .limit(5);
+        if(legacy.error)throw legacy.error;
+        if(legacy.data?.length){
+          alert(`「${group.name}」と同じ名前の未紐づけ備品があります。\n誤って使用者を削除しないよう、備品一覧で使用者を確認してから削除してください。`);
+          return;
+        }
+        if(!confirm(`「${group.name}」（${group.department||'部署未設定'} / ${group.location||'場所未設定'}）を使用者マスタから削除しますか？\n備品・履歴は削除しません。後から復元できるよう、使用者データは無効化して保管します。`))return;
+        const {data,error}=await c.from('asset_users')
+          .update({is_active:false,updated_at:new Date().toISOString()})
+          .eq('id',group.id)
+          .eq('is_active',true)
+          .select('id');
+        if(error)throw error;
+        if(!data?.length)throw new Error('使用者が見つからないか、既に削除されています。');
+        reopenAdminAfterReload();
+      }catch(err){alert('使用者を削除できませんでした: '+(err.message||'不明なエラー'));}
+      finally{userDelete.disabled=false;}
+      return;
     }
     const roomSave=e.target.closest('.user-room-save');
     if(roomSave){
