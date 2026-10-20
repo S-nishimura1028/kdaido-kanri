@@ -16,15 +16,20 @@
   }
 
   async function fetchAssetPrintInfo(id,fallbackName){
-    if(!id)return {name:fallbackName||'備品',user_name:null,location:null};
+    if(!id)return {name:fallbackName||'備品',room_number:null,location:null};
     const c=db();
-    if(!c)return {name:fallbackName||'備品',user_name:null,location:null};
+    if(!c)return {name:fallbackName||'備品',room_number:null,location:null};
     try{
-      const {data,error}=await c.from('assets').select('id,name,user_name,location').eq('id',id).single();
-      if(error||!data)return {name:fallbackName||'備品',user_name:null,location:null};
-      return {name:data.name||fallbackName||'備品',user_name:data.user_name||null,location:data.location||null};
+      const {data,error}=await c.from('assets').select('id,name,assigned_user_id,location').eq('id',id).single();
+      if(error||!data)return {name:fallbackName||'備品',room_number:null,location:null};
+      let roomNumber=null;
+      if(data.assigned_user_id){
+        const ur=await c.from('asset_users').select('room_number').eq('id',data.assigned_user_id).maybeSingle();
+        if(!ur.error)roomNumber=ur.data?.room_number||null;
+      }
+      return {name:data.name||fallbackName||'備品',room_number:roomNumber,location:data.location||null};
     }catch(_e){
-      return {name:fallbackName||'備品',user_name:null,location:null};
+      return {name:fallbackName||'備品',room_number:null,location:null};
     }
   }
 
@@ -50,7 +55,7 @@
       const fallbackName=parts.length>1?parts.slice(1).join(' / '):parts[0]||'備品';
       const info=await fetchAssetPrintInfo(activeAssetId,fallbackName);
       const img=canvas.toDataURL('image/png');
-      printSingle(info.name,info.user_name,info.location,img,err);
+      printSingle(info.name,info.room_number,info.location,img,err);
     });
 
     const hint=document.createElement('div');
@@ -62,12 +67,12 @@
     area.insertBefore(wrap,document.getElementById('qrError'));
   }
 
-  function printSingle(name,userName,location,img,err){
+  function printSingle(name,roomNumber,location,img,err){
     const startPosition=chooseStartPosition();
     if(startPosition===null)return;
     const w=window.open('','_blank');
     if(!w){ if(err) err.textContent='印刷画面を開けませんでした。ポップアップを許可してください。'; return; }
-    const labels=[{name:name||'備品',user_name:userName||null,location:location||null,img}];
+    const labels=[{name:name||'備品',room_number:roomNumber||null,location:location||null,img}];
     writeLabelPrintWindow(w,labels,startPosition,`${name||'備品'} QR印刷`);
   }
 
@@ -180,7 +185,7 @@
     const pages=buildPages(labels,startPosition);
     const pageHtml=pages.map((slots,pageIndex)=>{
       const cells=slots.map(x=>x
-        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="name">${esc(x.name)}</div><div class="user">使用者：${esc(x.user_name||'未使用')}</div><div class="location">保管場所：${esc(x.location||'未設定')}</div></div></div>`
+        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="name">${esc(x.name)}</div>${x.room_number?`<div class="room">部屋番号：${esc(x.room_number)}</div>`:''}<div class="location">保管場所：${esc(x.location||'未設定')}</div></div></div>`
         :'<div class="label blank"></div>').join('');
       return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
     }).join('');
@@ -196,7 +201,7 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
 .company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
 .qr{width:20mm;height:20mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.6mm}
 .name{font-size:7pt;font-weight:800;line-height:1.1;min-height:7mm;max-height:8.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
-.user{font-size:5.7pt;font-weight:700;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#334155;margin-top:.3mm}.location{font-size:5.4pt;font-weight:700;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#475569;margin-top:.3mm}
+.room{font-size:5.7pt;font-weight:800;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#334155;margin-top:.3mm}.location{font-size:5.4pt;font-weight:700;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#475569;margin-top:.3mm}
 .page-break{break-after:page;page-break-after:always}
 @media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
@@ -206,14 +211,24 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
 
   async function loadSelectedAssetInfo(selected){
     const ids=selected.map(cb=>cb.dataset.id).filter(Boolean);
-    const fallback=new Map(selected.map(cb=>[cb.dataset.id,{name:cb.dataset.name||'備品',user_name:null,location:null}]));
+    const fallback=new Map(selected.map(cb=>[cb.dataset.id,{name:cb.dataset.name||'備品',room_number:null,location:null}]));
     if(!ids.length)return fallback;
     const c=db();
     if(!c)return fallback;
     try{
-      const {data,error}=await c.from('assets').select('id,name,user_name,location').in('id',ids);
+      const {data,error}=await c.from('assets').select('id,name,assigned_user_id,location').in('id',ids);
       if(error)return fallback;
-      (data||[]).forEach(a=>fallback.set(String(a.id),{name:a.name||fallback.get(String(a.id))?.name||'備品',user_name:a.user_name||null,location:a.location||null}));
+      const userIds=[...new Set((data||[]).map(a=>a.assigned_user_id).filter(Boolean))];
+      const rooms=new Map();
+      if(userIds.length){
+        const ur=await c.from('asset_users').select('id,room_number').in('id',userIds);
+        if(!ur.error)(ur.data||[]).forEach(u=>rooms.set(String(u.id),u.room_number||null));
+      }
+      (data||[]).forEach(a=>fallback.set(String(a.id),{
+        name:a.name||fallback.get(String(a.id))?.name||'備品',
+        room_number:a.assigned_user_id?rooms.get(String(a.assigned_user_id))||null:null,
+        location:a.location||null
+      }));
     }catch(_e){}
     return fallback;
   }
@@ -242,8 +257,8 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
         url.searchParams.set('asset',cb.dataset.id);
         const c=document.createElement('canvas');
         await QRCode.toCanvas(c,url.toString(),{width:240,margin:1,errorCorrectionLevel:'M'});
-        const info=infoMap.get(cb.dataset.id)||{name:cb.dataset.name||'備品',user_name:null,location:null};
-        labels.push({name:info.name||'備品',user_name:info.user_name||null,location:info.location||null,img:c.toDataURL('image/png')});
+        const info=infoMap.get(cb.dataset.id)||{name:cb.dataset.name||'備品',room_number:null,location:null};
+        labels.push({name:info.name||'備品',room_number:info.room_number||null,location:info.location||null,img:c.toDataURL('image/png')});
       }
       w.document.open();
       writeLabelPrintWindow(w,labels,startPosition,'備品QR LBLA4-WPG-27・27面印刷');

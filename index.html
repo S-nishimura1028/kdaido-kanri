@@ -247,7 +247,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
         <label>取得単価<input id="purchasePrice" type="number" min="0" step="0.01"></label>
         <label>購入部署<select id="departmentForm"></select></label>
         <label>使用・保管場所<select id="locationForm"></select></label>
-        <label>現在の使用者<input id="currentUserName" placeholder="未使用の場合は空欄"></label>
+        <label>現在の使用者<select id="currentUserId"><option value="">未使用</option></select><input id="currentUserName" type="hidden"></label>
         <label>ステータス<select id="statusForm"><option>未使用</option><option>使用中</option><option>修理中</option><option>廃棄</option></select></label>
         <label class="full-row">現物写真① 外観
           <input id="assetPhoto" type="file" accept="image/*" capture="environment">
@@ -284,10 +284,10 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
   <script src="js/config.js"></script>
   <script src="js/public-asset.js?v=20260928-1"></script>
   <script src="js/image-compress.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/admin-master.js?v=20260928-1"></script>
+  <script src="js/app.js?v=20261020-1"></script>
+  <script src="js/admin-master.js?v=20261020-1"></script>
   <!-- auto deploy test -->
-<script src="js/admin-analysis.js?v=20261001-1"></script>\n<script src="js/qr-print.js?v=20260929-1"></script>
+<script src="js/admin-analysis.js?v=20261001-1"></script>\n<script src="js/qr-print.js?v=20261020-1"></script>
 <script src="js/photo-update.js"></script>
 </body>
 </html>
