@@ -1,6 +1,7 @@
 (function(){
   'use strict';
   let client=null,rendering=false,guarding=false,userGroups=[];
+  const userMasterFilters={query:'',department:'',location:''};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function db(){
     if(client)return client;
@@ -45,14 +46,50 @@
     if(document.getElementById('adminMasterStyle'))return;
     const s=document.createElement('style');s.id='adminMasterStyle';
     s.textContent=`.master-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.master-mini{border:0;border-radius:8px;padding:7px 10px;font-weight:700;background:#edf4f2;color:#355e55}.master-mini.danger{background:#f8eceb;color:#9b2c22}.master-mini.promote{background:#e8f1fb;color:#075b9b}.master-add{margin-left:auto}.master-row strong{overflow-wrap:anywhere}.admin-account-note{font-size:13px;color:var(--muted);line-height:1.6;padding:2px 0 12px}.admin-account-meta{display:block;color:var(--muted);font-size:12px;margin-top:3px}.user-admin-assets{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5}.user-admin-count{font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;background:#e8f5ec;color:#166534}.admin-create-overlay{position:fixed;inset:0;z-index:4000;background:rgba(4,30,47,.58);display:grid;place-items:center;padding:16px;backdrop-filter:blur(3px)}.admin-create-card{width:min(500px,95vw);background:#fff;border:1px solid #dbe8e3;border-radius:18px;padding:20px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.admin-create-card h3{margin:0 0 6px;color:#173f59}.admin-create-card p{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.6}.admin-create-card label{display:flex;flex-direction:column;gap:7px;font-weight:700;font-size:14px;margin-bottom:12px}.admin-create-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}.admin-create-actions button{min-height:46px}.password-line{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.password-line button{min-height:44px}.admin-create-error{color:var(--danger);font-size:13px;min-height:18px;margin-top:8px}@media(max-width:600px){.password-line{grid-template-columns:1fr}.admin-create-actions{display:grid;grid-template-columns:1fr 1fr}.admin-create-card{padding:18px}}`;
+
+    s.textContent+=`.user-master-panel{grid-column:1/-1;min-width:0}
+    .user-master-panel .panel-head{flex-wrap:wrap;align-items:flex-start}
+    .user-master-info{font-size:13px;color:var(--muted);line-height:1.65;margin:0 0 15px}
+    .user-master-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:0 0 12px}
+    .user-master-toolbar label{display:flex;flex-direction:column;gap:5px;font-weight:700;font-size:12px;color:#42566b}
+    .user-master-toolbar label:first-child{flex:2;min-width:200px}
+    .user-master-toolbar label:not(:first-child){flex:1;min-width:145px}
+    .user-master-toolbar input,.user-master-toolbar select{width:100%;min-height:42px;border:1px solid #cfdae5;border-radius:9px;padding:9px;background:#fff;color:#173047}
+    .user-master-count{font-size:12px;color:var(--muted);margin:0 0 9px}
+    .user-master-list{display:block}
+    .user-master-head,.user-master-row{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(110px,.85fr) minmax(125px,1fr) minmax(85px,.65fr) minmax(95px,.9fr) minmax(122px,.9fr);gap:10px;align-items:center}
+    .user-master-head{font-size:12px;font-weight:800;color:#475569;background:#f0f5f8;border-radius:8px;padding:12px}
+    .user-master-row{font-size:13px;padding:14px 12px;border-bottom:1px solid var(--line)}
+    .user-master-row:hover{background:#f8fbfc}
+    .user-master-row strong{overflow-wrap:anywhere;color:#173047;font-size:14px}
+    .user-master-cell{min-width:0;overflow-wrap:anywhere}
+    .user-master-muted{color:#9aa8b6}
+    .user-master-asset-detail{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
+    .user-master-row .master-actions{justify-content:flex-start}
+    .user-editor-card{width:min(670px,96vw);max-height:90vh;overflow-y:auto}
+    .user-editor-card h3{font-size:20px}
+    .user-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+    .user-editor-grid label{margin:0}
+    .user-editor-grid input{width:100%;min-height:45px;border:1px solid #cfdae5;border-radius:9px;padding:9px 11px;font-size:16px;background:#fff;color:#19354a}
+    .user-editor-grid input:focus{outline:2px solid #84b5ce;outline-offset:1px}
+    .user-editor-tip{font-size:12px;color:var(--muted);line-height:1.65;padding:12px;background:#f4f8fb;border-radius:9px;margin:14px 0 0}
+    .user-editor-error{color:#b42318;min-height:18px;margin-top:9px;font-size:13px}
+    @media(max-width:960px){.user-master-head{display:none}.user-master-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:#fafcfe;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:14px}.user-master-cell:before{content:attr(data-label);display:block;font-weight:800;font-size:11px;color:#63778a;margin-bottom:4px}.user-master-row .user-master-name,.user-master-row .user-master-actions-cell{grid-column:1/-1}.user-master-row .master-actions{justify-content:flex-end}.user-master-list{padding-top:4px}}
+    @media(max-width:580px){.user-editor-grid{grid-template-columns:1fr}.user-master-row .master-actions{justify-content:flex-start}.user-master-panel{padding:12px}.user-master-panel .panel-head button{width:100%}}
+    `;
     document.head.appendChild(s);
   }
 
   function ensureUserPanel(){
     if(document.getElementById('userAdmin'))return;
     const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
-    const panel=document.createElement('div');panel.className='panel';
-    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 使用者追加</button></div><div class="admin-account-note">備品とは独立して使用者を管理します。転居時はここで部屋番号を変更すると、以後のシール印刷に反映されます。</div><div id="userAdmin" class="master-list"></div>';
+    const panel=document.createElement('div');panel.className='panel user-master-panel';
+    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 実習生を登録</button></div>'+
+      '<p class="user-master-info">氏名・所属部署・居住場所・部屋番号をそれぞれ管理します。「詳細編集」から既存の登録者も変更できます。備品の登録・詳細画面は従来どおりです。</p>'+
+      '<div class="user-master-toolbar"><label>名前・部署・居住場所・部屋番号で検索<input id="userMasterSearch" placeholder="例：カイン／薄場寮／205" aria-label="使用者の検索"></label>'+
+      '<label>所属部署<select id="userMasterDepartmentFilter"><option value="">すべての部署</option></select></label>'+
+      '<label>居住場所<select id="userMasterLocationFilter"><option value="">すべての場所</option></select></label></div>'+
+      '<div class="user-master-count" id="userMasterCount" aria-live="polite"></div><div id="userAdmin" class="user-master-list"></div>';
     const first=grid.querySelector('.panel');
     if(first?.nextSibling)grid.insertBefore(panel,first.nextSibling);else grid.appendChild(panel);
   }
@@ -160,10 +197,120 @@
       (rows.length?rows.map(x=>`<div class="master-row" data-profile-row="${x.id}"><span><strong>${esc(x.name||'名称未設定')}</strong><small class="admin-account-meta">${esc(x.email||'メール未設定')}</small></span><div class="master-actions">${x.role==='admin'?`<span class="badge use">管理者</span><button type="button" class="master-mini profile-name-edit" data-id="${x.id}" data-name="${esc(x.name||'')}">名前編集</button>${x.id!==currentId?`<button type="button" class="master-mini profile-password-reset" data-id="${x.id}" data-name="${esc(x.name||'')}" data-email="${esc(x.email||'')}">パスワード変更</button>`:''}`:`<span class="badge">旧権限: ${esc(x.role||'未設定')}</span><button type="button" class="master-mini promote profile-promote" data-id="${x.id}" data-name="${esc(x.name||x.email||'このアカウント')}">管理者にする</button>`}</div></div>`).join(''):'<div class="empty">アカウントはありません。</div>');
   }
 
+
+  function renderUserRows(){
+    const host=document.getElementById('userAdmin');if(!host)return;
+    const q=userMasterFilters.query.trim().toLocaleLowerCase();
+    const matched=userGroups.map((g,index)=>({g,index})).filter(({g})=>{
+      if(userMasterFilters.department && (g.department||'')!==userMasterFilters.department)return false;
+      if(userMasterFilters.location && (g.location||'')!==userMasterFilters.location)return false;
+      if(!q)return true;
+      return [g.name,g.department,g.location,g.room_number].some(s=>String(s||'').toLocaleLowerCase().includes(q));
+    });
+    const count=document.getElementById('userMasterCount');
+    if(count)count.textContent='表示中 '+matched.length+'名 / 登録中 '+userGroups.length+'名　｜　各行の「詳細編集」で4項目を変更できます。';
+    if(!matched.length){host.innerHTML='<div class="empty">該当する使用者がいません。</div>';return;}
+    host.innerHTML='<div class="user-master-head"><span>実習生の名前</span><span>所属部署</span><span>居住場所</span><span>部屋番号</span><span>紐づく備品</span><span>操作</span></div>'+
+      matched.map(({g,index})=>{
+        const value=(v)=>v?esc(v):'<span class="user-master-muted">未設定</span>';
+        const preview=g.items.slice(0,3).map(a=>esc((a.asset_no||'-')+' '+(a.name||''))).join('、');
+        return `<div class="user-master-row">
+          <div class="user-master-cell user-master-name" data-label="実習生の名前"><strong>${esc(g.name)}</strong></div>
+          <div class="user-master-cell" data-label="所属部署">${value(g.department)}</div>
+          <div class="user-master-cell" data-label="居住場所">${value(g.location)}</div>
+          <div class="user-master-cell" data-label="部屋番号">${value(g.room_number)}</div>
+          <div class="user-master-cell" data-label="紐づく備品"><span class="user-admin-count">${g.items.length}件</span>${preview?`<div class="user-master-asset-detail">${preview}</div>`:''}</div>
+          <div class="user-master-cell user-master-actions-cell" data-label="操作"><div class="master-actions">
+            <button type="button" class="master-mini user-master-edit" data-index="${index}" title="${esc(g.name)} の詳細編集">詳細編集</button>
+            <button type="button" class="master-mini danger user-master-delete" data-index="${index}" title="${esc(g.name)} の削除">削除</button>
+          </div></div></div>`;
+      }).join('');
+  }
+
+  function updateUserMasterFilterOptions(){
+    function apply(id,key,label){
+      const el=document.getElementById(id);if(!el)return;
+      const values=[...new Set(userGroups.map(u=>u[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
+      const keep=userMasterFilters[key];
+      el.innerHTML=`<option value="">${label}</option>`+values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      if(values.includes(keep))el.value=keep;else {el.value='';userMasterFilters[key]='';}
+    }
+    apply('userMasterDepartmentFilter','department','すべての部署');
+    apply('userMasterLocationFilter','location','すべての場所');
+    const search=document.getElementById('userMasterSearch');
+    if(search && search.value!==userMasterFilters.query)search.value=userMasterFilters.query;
+  }
+
+  function openAssetUserEditor(target=null){
+    document.getElementById('assetUserEditorOverlay')?.remove();
+    const departments=[...new Set(userGroups.map(x=>x.department).filter(v=>v&&!/^\d+$/.test(v)))].sort((a,b)=>a.localeCompare(b,'ja'));
+    const locations=[...new Set(userGroups.map(x=>x.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
+    const options=values=>values.map(v=>`<option value="${esc(v)}"></option>`).join('');
+    const overlay=document.createElement('div');
+    overlay.id='assetUserEditorOverlay';overlay.className='admin-create-overlay';
+    const form=document.createElement('form');form.className='admin-create-card user-editor-card';
+    form.innerHTML=`<h3>${target?'使用者の詳細編集':'実習生を新規登録'}</h3>
+      <p>名前・所属部署・居住場所・部屋番号をまとめて設定できます。</p>
+      <div class="user-editor-grid">
+        <label>実習生の名前 <span style="color:#b42318">*</span><input name="userName" required maxlength="100" placeholder="例：カイン" autocomplete="off"></label>
+        <label>所属部署<input name="userDepartment" list="assetUserDepartmentSuggestions" maxlength="100" placeholder="例：農産部" autocomplete="off"><datalist id="assetUserDepartmentSuggestions">${options(departments)}</datalist></label>
+        <label>居住場所（寮・社宅など）<input name="userLocation" list="assetUserLocationSuggestions" maxlength="100" placeholder="例：薄場寮" autocomplete="off"><datalist id="assetUserLocationSuggestions">${options(locations)}</datalist></label>
+        <label>部屋番号<input name="userRoom" maxlength="100" placeholder="例：201、北側和室" autocomplete="off"></label>
+      </div>
+      <div class="user-editor-tip">所属部署・居住場所は候補から選ぶほか、直接入力できます。部屋番号は任意です。変更は使用者マスタに保存され、既存備品の登録内容は変更しません。</div>
+      <div id="assetUserEditorError" class="user-editor-error" role="alert"></div>
+      <div class="admin-create-actions"><button type="button" class="secondary" id="cancelAssetUserEditor">キャンセル</button><button type="submit" class="primary" id="saveAssetUserEditor">${target?'変更を保存':'登録する'}</button></div>`;
+    const field=n=>form.elements.namedItem(n);
+    field('userName').value=target?.name||'';
+    field('userDepartment').value=target?.department||'';
+    field('userLocation').value=target?.location||'';
+    field('userRoom').value=target?.room_number||'';
+    overlay.appendChild(form);document.body.appendChild(overlay);
+    const close=()=>overlay.remove();
+    form.querySelector('#cancelAssetUserEditor').onclick=close;
+    overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+    overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close();}});
+    form.addEventListener('submit',async e=>{
+      e.preventDefault();
+      const errorBox=form.querySelector('#assetUserEditorError');
+      errorBox.textContent='';
+      const payload={
+        name:field('userName').value.trim(),
+        department:field('userDepartment').value.trim()||null,
+        location:field('userLocation').value.trim()||null,
+        room_number:field('userRoom').value.trim()||null
+      };
+      if(!payload.name){errorBox.textContent='実習生の名前を入力してください。';field('userName').focus();return;}
+      if(userGroups.some(u=>u.id!==target?.id&&u.name===payload.name&&(u.department||null)===payload.department)){
+        errorBox.textContent='同じ名前・所属部署の使用者が既に登録されています。既存の使用者を詳細編集してください。';
+        return;
+      }
+      const save=form.querySelector('#saveAssetUserEditor');
+      save.disabled=true;save.textContent='保存中…';
+      try{
+        const c=db();if(!c)throw new Error('Supabaseに接続できません。');
+        let result;
+        if(target)result=await c.from('asset_users').update({...payload,updated_at:new Date().toISOString()}).eq('id',target.id).eq('is_active',true).select('id').single();
+        else result=await c.from('asset_users').insert({...payload,is_active:true}).select('id').single();
+        if(result.error)throw result.error;
+        let warning='';
+        if(target && target.name!==payload.name){
+          const sync=await c.from('assets').update({user_name:payload.name}).eq('assigned_user_id',target.id);
+          if(sync.error)warning='使用者マスタは保存されましたが、紐づく備品の表示名更新に失敗しました：'+sync.error.message;
+        }
+        close();
+        await renderUsers();
+        if(warning)alert(warning);
+      }catch(err){errorBox.textContent=err.message||'保存できませんでした。';}
+      finally{save.disabled=false;save.textContent=target?'変更を保存':'登録する';}
+    });
+    field('userName').focus();
+  }
+
   async function renderUsers(){
     ensureUserPanel();
     const host=document.getElementById('userAdmin');if(!host)return;
-    const c=db();
+    const c=db();if(!c){host.innerHTML='<div class="error">Supabaseに接続できません。</div>';return;}
     const [usersRes,assetsRes]=await Promise.all([
       c.from('asset_users').select('id,name,department,room_number,location,is_active').eq('is_active',true).order('name'),
       c.from('assets').select('id,asset_no,name,assigned_user_id').not('assigned_user_id','is',null)
@@ -176,11 +323,8 @@
       byUser.get(a.assigned_user_id).push(a);
     });
     userGroups=(usersRes.data||[]).map(u=>({...u,items:byUser.get(u.id)||[]}));
-    host.innerHTML=userGroups.length?userGroups.map((g,i)=>{
-      const items=g.items.slice(0,4).map(a=>`${esc(a.asset_no||'-')} ${esc(a.name||'')}`).join('、');
-      const more=g.items.length>4?` ほか${g.items.length-4}件`:'';
-      return `<div class="master-row"><span><strong>${esc(g.name)}</strong><small class="user-admin-assets">${esc(g.department||'部署未設定')} / ${esc(g.location||'場所未設定')}</small><small class="user-admin-assets">${items||'現在の紐づき備品なし'}${more}</small></span><div class="master-actions"><span class="user-admin-count">${g.items.length}件</span><input class="user-room-input" data-index="${i}" value="${esc(g.room_number||'')}" placeholder="部屋番号（任意）" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><button type="button" class="master-mini user-room-save" data-index="${i}">部屋保存</button><button type="button" class="master-mini user-master-edit" data-index="${i}">基本情報</button><button type="button" class="master-mini danger user-master-delete" data-index="${i}" title="備品の割り当てがない使用者のみ削除できます">削除</button></div></div>`;
-    }).join(''):'<div class="empty">使用者は登録されていません。</div>';
+    updateUserMasterFilterOptions();
+    renderUserRows();
   }
 
   async function renderOne(def){
@@ -210,17 +354,17 @@
 
   function reopenAdminAfterReload(){sessionStorage.setItem('reopenAdmin','1');location.reload();}
 
+  document.addEventListener('input',e=>{
+    if(e.target.id==='userMasterSearch'){userMasterFilters.query=e.target.value;renderUserRows();}
+  });
+  document.addEventListener('change',e=>{
+    if(e.target.id==='userMasterDepartmentFilter'){userMasterFilters.department=e.target.value;renderUserRows();}
+    if(e.target.id==='userMasterLocationFilter'){userMasterFilters.location=e.target.value;renderUserRows();}
+  });
+
   document.addEventListener('click',async e=>{
     if(e.target.closest('#addAdminAccountBtn')){openAdminCreateDialog();return;}
-    if(e.target.closest('#addAssetUserBtn')){
-      const name=prompt('使用者名を入力してください');if(!name||!name.trim())return;
-      const department=prompt('部署を入力してください（例：営農部・農産部）','')||'';
-      const room=prompt('部屋番号を入力してください。部署持ち等は空欄で構いません。','')||'';
-      const location=prompt('居住・管理場所を入力してください（例：薄場寮）','')||'';
-      const c=db();const {error}=await c.from('asset_users').insert({name:name.trim(),department:department.trim()||null,room_number:room.trim()||null,location:location.trim()||null,is_active:true});
-      if(error){alert('使用者を追加できませんでした: '+error.message);return;}
-      await renderUsers();return;
-    }
+    if(e.target.closest('#addAssetUserBtn')){openAssetUserEditor();return;}
     const userDelete=e.target.closest('.user-master-delete');
     if(userDelete){
       const group=userGroups[Number(userDelete.dataset.index)];
@@ -265,28 +409,8 @@
       finally{userDelete.disabled=false;}
       return;
     }
-    const roomSave=e.target.closest('.user-room-save');
-    if(roomSave){
-      const group=userGroups[Number(roomSave.dataset.index)];if(!group)return;
-      const input=document.querySelector(`.user-room-input[data-index="${roomSave.dataset.index}"]`);
-      const room=String(input?.value||'').trim()||null;
-      const c=db();const {error}=await c.from('asset_users').update({room_number:room,updated_at:new Date().toISOString()}).eq('id',group.id);
-      if(error){alert('部屋番号を変更できませんでした: '+error.message);return;}
-      await renderUsers();return;
-    }
     const userEdit=e.target.closest('.user-master-edit');
-    if(userEdit){
-      const group=userGroups[Number(userEdit.dataset.index)];if(!group)return;
-      const name=prompt('使用者名',group.name||'');if(name===null||!name.trim())return;
-      const department=prompt('部署',group.department||'');if(department===null)return;
-      const location=prompt('居住・管理場所',group.location||'');if(location===null)return;
-      const c=db();
-      const {error}=await c.from('asset_users').update({name:name.trim(),department:department.trim()||null,location:location.trim()||null,updated_at:new Date().toISOString()}).eq('id',group.id);
-      if(error){alert('使用者情報を変更できませんでした: '+error.message);return;}
-      const {error:assetError}=await c.from('assets').update({user_name:name.trim()}).eq('assigned_user_id',group.id);
-      if(assetError){alert('使用者名は変更しましたが、備品側の表示名更新に失敗しました: '+assetError.message);return;}
-      await renderUsers();return;
-    }
+    if(userEdit){const group=userGroups[Number(userEdit.dataset.index)];if(group)openAssetUserEditor(group);return;}
     const promote=e.target.closest('.profile-promote');
     if(promote){
       if(!confirm(`「${promote.dataset.name}」を管理者にしますか？\n管理者は備品・履歴・管理画面をすべて編集できます。`))return;
