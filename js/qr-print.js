@@ -20,9 +20,14 @@
     const c=db();
     if(!c)return {name:fallbackName||'備品',room_number:null,location:null};
     try{
-      const {data,error}=await c.from('assets').select('id,name,room_number,location').eq('id',id).single();
+      const {data,error}=await c.from('assets').select('id,name,assigned_user_id,location').eq('id',id).single();
       if(error||!data)return {name:fallbackName||'備品',room_number:null,location:null};
-      return {name:data.name||fallbackName||'備品',room_number:data.room_number||null,location:data.location||null};
+      let roomNumber=null;
+      if(data.assigned_user_id){
+        const ur=await c.from('asset_users').select('room_number').eq('id',data.assigned_user_id).maybeSingle();
+        if(!ur.error)roomNumber=ur.data?.room_number||null;
+      }
+      return {name:data.name||fallbackName||'備品',room_number:roomNumber,location:data.location||null};
     }catch(_e){
       return {name:fallbackName||'備品',room_number:null,location:null};
     }
@@ -211,9 +216,19 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
     const c=db();
     if(!c)return fallback;
     try{
-      const {data,error}=await c.from('assets').select('id,name,room_number,location').in('id',ids);
+      const {data,error}=await c.from('assets').select('id,name,assigned_user_id,location').in('id',ids);
       if(error)return fallback;
-      (data||[]).forEach(a=>fallback.set(String(a.id),{name:a.name||fallback.get(String(a.id))?.name||'備品',room_number:a.room_number||null,location:a.location||null}));
+      const userIds=[...new Set((data||[]).map(a=>a.assigned_user_id).filter(Boolean))];
+      const rooms=new Map();
+      if(userIds.length){
+        const ur=await c.from('asset_users').select('id,room_number').in('id',userIds);
+        if(!ur.error)(ur.data||[]).forEach(u=>rooms.set(String(u.id),u.room_number||null));
+      }
+      (data||[]).forEach(a=>fallback.set(String(a.id),{
+        name:a.name||fallback.get(String(a.id))?.name||'備品',
+        room_number:a.assigned_user_id?rooms.get(String(a.assigned_user_id))||null:null,
+        location:a.location||null
+      }));
     }catch(_e){}
     return fallback;
   }
