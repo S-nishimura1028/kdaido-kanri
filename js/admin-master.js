@@ -84,7 +84,7 @@
     if(document.getElementById('userAdmin'))return;
     const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
     const panel=document.createElement('div');panel.className='panel user-master-panel';
-    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ（実習生）</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 実習生を登録</button></div>'+
+    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 実習生を登録</button></div>'+
       '<p class="user-master-info">氏名・所属部署・居住場所・部屋番号をそれぞれ管理します。「詳細編集」から既存の登録者も変更できます。備品の登録・詳細画面は従来どおりです。</p>'+
       '<div class="user-master-toolbar"><label>名前・部署・居住場所・部屋番号で検索<input id="userMasterSearch" placeholder="例：カイン／薄場寮／205" aria-label="使用者の検索"></label>'+
       '<label>所属部署<select id="userMasterDepartmentFilter"><option value="">すべての部署</option></select></label>'+
@@ -221,8 +221,8 @@
           <div class="user-master-cell" data-label="部屋番号">${value(g.room_number)}</div>
           <div class="user-master-cell" data-label="紐づく備品"><span class="user-admin-count">${g.items.length}件</span>${preview?`<div class="user-master-asset-detail">${preview}</div>`:''}</div>
           <div class="user-master-cell user-master-actions-cell" data-label="操作"><div class="master-actions">
-            <button type="button" class="master-mini user-master-edit" data-index="${index}">詳細編集</button>
-            <button type="button" class="master-mini danger user-master-delete" data-index="${index}">削除</button>
+            <button type="button" class="master-mini user-master-edit" data-index="${index}" title="${esc(g.name)} の詳細編集">詳細編集</button>
+            <button type="button" class="master-mini danger user-master-delete" data-index="${index}" title="${esc(g.name)} の削除">削除</button>
           </div></div></div>`;
       }).join('');
   }
@@ -243,7 +243,7 @@
 
   function openAssetUserEditor(target=null){
     document.getElementById('assetUserEditorOverlay')?.remove();
-    const departments=[...new Set(userGroups.map(x=>x.department).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
+    const departments=[...new Set(userGroups.map(x=>x.department).filter(v=>v&&!/^\d+$/.test(v)))].sort((a,b)=>a.localeCompare(b,'ja'));
     const locations=[...new Set(userGroups.map(x=>x.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
     const options=values=>values.map(v=>`<option value="${esc(v)}"></option>`).join('');
     const overlay=document.createElement('div');
