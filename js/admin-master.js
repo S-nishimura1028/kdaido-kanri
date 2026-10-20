@@ -47,7 +47,7 @@
     const s=document.createElement('style');s.id='adminMasterStyle';
     s.textContent=`.master-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.master-mini{border:0;border-radius:8px;padding:7px 10px;font-weight:700;background:#edf4f2;color:#355e55}.master-mini.danger{background:#f8eceb;color:#9b2c22}.master-mini.promote{background:#e8f1fb;color:#075b9b}.master-add{margin-left:auto}.master-row strong{overflow-wrap:anywhere}.admin-account-note{font-size:13px;color:var(--muted);line-height:1.6;padding:2px 0 12px}.admin-account-meta{display:block;color:var(--muted);font-size:12px;margin-top:3px}.user-admin-assets{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5}.user-admin-count{font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;background:#e8f5ec;color:#166534}.admin-create-overlay{position:fixed;inset:0;z-index:4000;background:rgba(4,30,47,.58);display:grid;place-items:center;padding:16px;backdrop-filter:blur(3px)}.admin-create-card{width:min(500px,95vw);background:#fff;border:1px solid #dbe8e3;border-radius:18px;padding:20px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.admin-create-card h3{margin:0 0 6px;color:#173f59}.admin-create-card p{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.6}.admin-create-card label{display:flex;flex-direction:column;gap:7px;font-weight:700;font-size:14px;margin-bottom:12px}.admin-create-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}.admin-create-actions button{min-height:46px}.password-line{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.password-line button{min-height:44px}.admin-create-error{color:var(--danger);font-size:13px;min-height:18px;margin-top:8px}@media(max-width:600px){.password-line{grid-template-columns:1fr}.admin-create-actions{display:grid;grid-template-columns:1fr 1fr}.admin-create-card{padding:18px}}`;
 
-    s.textContent+=`.user-master-inline-editor{grid-column:1/-1;scroll-margin-top:24px;margin:0 0 14px 0;position:relative;z-index:1}
+    s.textContent+=`.admin-grid>.panel:has(#userMasterAdmin){display:none!important}\n    .user-master-inline-editor{grid-column:1/-1;scroll-margin-top:24px;margin:0 0 14px 0;position:relative;z-index:1}
     .user-master-inline-card{width:100%;max-height:none;box-shadow:none;border:2px solid #aacbd9;background:#f8fbfe;border-radius:12px}
     .user-master-inline-card .admin-create-actions{margin-top:16px}
     .user-master-panel{grid-column:1/-1;min-width:0}
@@ -385,6 +385,29 @@
     if(e.target.id==='userMasterDepartmentFilter'){userMasterFilters.department=e.target.value;renderUserRows();}
     if(e.target.id==='userMasterLocationFilter'){userMasterFilters.location=e.target.value;renderUserRows();}
   });
+
+  // Capture user-master clicks before any previously cached legacy handler.
+  // The retired user-master.js used the same CSS class and opened a native name prompt.
+  document.addEventListener('click',e=>{
+    const edit=e.target.closest('.user-master-edit');
+    const legacyAdd=e.target.closest('#addUserMasterBtn');
+    if(!edit&&!legacyAdd)return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(legacyAdd){openAssetUserEditor();return;}
+    let group=null;
+    if(edit.hasAttribute('data-index')){
+      const index=Number(edit.dataset.index);
+      if(Number.isInteger(index)&&index>=0)group=userGroups[index]||null;
+    }
+    if(!group&&edit.dataset.id)group=userGroups.find(g=>g.id===edit.dataset.id)||null;
+    if(!group&&edit.dataset.name){
+      const matches=userGroups.filter(g=>g.name===edit.dataset.name);
+      if(matches.length===1)group=matches[0];
+    }
+    if(group)openAssetUserEditor(group);
+    else alert('対象の使用者を特定できません。管理画面を再読み込みしてから、使用者マスタの「まとめて編集」を押してください。');
+  },true);
 
   document.addEventListener('click',async e=>{
     if(e.target.closest('#addAdminAccountBtn')){openAdminCreateDialog();return;}
