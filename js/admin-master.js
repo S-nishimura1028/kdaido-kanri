@@ -51,7 +51,8 @@
   function ensureUserPanel(){
     if(document.getElementById('userAdmin'))return;
     const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
-    const panel=document.createElement('div');panel.className='panel';panel.innerHTML='<div class="panel-head"><h3>現在の使用者</h3></div><div class="admin-account-note">備品に登録されている使用者を一覧表示します。名前を編集すると、その人が使用中の備品すべてに反映されます。</div><div id="userAdmin" class="master-list"></div>';
+    const panel=document.createElement('div');panel.className='panel';
+    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 使用者追加</button></div><div class="admin-account-note">備品とは独立して使用者を管理します。転居時はここで部屋番号を変更すると、以後のシール印刷に反映されます。</div><div id="userAdmin" class="master-list"></div>';
     const first=grid.querySelector('.panel');
     if(first?.nextSibling)grid.insertBefore(panel,first.nextSibling);else grid.appendChild(panel);
   }
@@ -163,23 +164,23 @@
     ensureUserPanel();
     const host=document.getElementById('userAdmin');if(!host)return;
     const c=db();
-    const {data,error}=await c.from('assets').select('id,asset_no,name,user_name,room_number,status').not('user_name','is',null).order('user_name');
-    if(error){host.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
-    const map=new Map();
-    (data||[]).forEach(a=>{
-      const name=String(a.user_name||'').trim();if(!name)return;
-      if(!map.has(name))map.set(name,[]);
-      map.get(name).push(a);
+    const [usersRes,assetsRes]=await Promise.all([
+      c.from('asset_users').select('id,name,department,room_number,location,is_active').eq('is_active',true).order('name'),
+      c.from('assets').select('id,asset_no,name,assigned_user_id').not('assigned_user_id','is',null)
+    ]);
+    if(usersRes.error){host.innerHTML=`<div class="error">${esc(usersRes.error.message)}</div>`;return;}
+    if(assetsRes.error){host.innerHTML=`<div class="error">${esc(assetsRes.error.message)}</div>`;return;}
+    const byUser=new Map();
+    (assetsRes.data||[]).forEach(a=>{
+      if(!byUser.has(a.assigned_user_id))byUser.set(a.assigned_user_id,[]);
+      byUser.get(a.assigned_user_id).push(a);
     });
-    userGroups=[...map.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ja')).map(([name,items])=>{
-      const roomNumbers=[...new Set(items.map(x=>String(x.room_number||'').trim()).filter(Boolean))];
-      return {name,items,roomNumber:roomNumbers.length===1?roomNumbers[0]:'',roomMixed:roomNumbers.length>1};
-    });
+    userGroups=(usersRes.data||[]).map(u=>({...u,items:byUser.get(u.id)||[]}));
     host.innerHTML=userGroups.length?userGroups.map((g,i)=>{
       const items=g.items.slice(0,4).map(a=>`${esc(a.asset_no||'-')} ${esc(a.name||'')}`).join('、');
       const more=g.items.length>4?` ほか${g.items.length-4}件`:'';
-      return `<div class="master-row"><span><strong>${esc(g.name)}</strong><small class="user-admin-assets">${items}${more}</small>${g.roomMixed?'<small class="user-admin-assets">部屋番号：複数設定あり</small>':''}</span><div class="master-actions"><span class="user-admin-count">${g.items.length}件</span><input class="user-room-input" data-index="${i}" value="${esc(g.roomMixed?'':g.roomNumber)}" placeholder="部屋番号（任意）" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><button type="button" class="master-mini user-room-save" data-index="${i}">保存</button><button type="button" class="master-mini user-name-edit" data-index="${i}">名前編集</button></div></div>`;
-    }).join(''):'<div class="empty">現在の使用者は登録されていません。</div>';
+      return `<div class="master-row"><span><strong>${esc(g.name)}</strong><small class="user-admin-assets">${esc(g.department||'部署未設定')} / ${esc(g.location||'場所未設定')}</small><small class="user-admin-assets">${items||'現在の紐づき備品なし'}${more}</small></span><div class="master-actions"><span class="user-admin-count">${g.items.length}件</span><input class="user-room-input" data-index="${i}" value="${esc(g.room_number||'')}" placeholder="部屋番号（任意）" style="width:140px;padding:7px 9px;border:1px solid var(--line);border-radius:8px"><button type="button" class="master-mini user-room-save" data-index="${i}">部屋保存</button><button type="button" class="master-mini user-master-edit" data-index="${i}">基本情報</button></div></div>`;
+    }).join(''):'<div class="empty">使用者は登録されていません。</div>';
   }
 
   async function renderOne(def){
@@ -211,22 +212,35 @@
 
   document.addEventListener('click',async e=>{
     if(e.target.closest('#addAdminAccountBtn')){openAdminCreateDialog();return;}
+    if(e.target.closest('#addAssetUserBtn')){
+      const name=prompt('使用者名を入力してください');if(!name||!name.trim())return;
+      const department=prompt('部署を入力してください（例：営農部・農産部）','')||'';
+      const room=prompt('部屋番号を入力してください。部署持ち等は空欄で構いません。','')||'';
+      const location=prompt('居住・管理場所を入力してください（例：薄場寮）','')||'';
+      const c=db();const {error}=await c.from('asset_users').insert({name:name.trim(),department:department.trim()||null,room_number:room.trim()||null,location:location.trim()||null,is_active:true});
+      if(error){alert('使用者を追加できませんでした: '+error.message);return;}
+      await renderUsers();return;
+    }
     const roomSave=e.target.closest('.user-room-save');
     if(roomSave){
       const group=userGroups[Number(roomSave.dataset.index)];if(!group)return;
       const input=document.querySelector(`.user-room-input[data-index="${roomSave.dataset.index}"]`);
       const room=String(input?.value||'').trim()||null;
-      const c=db();const {error}=await c.from('assets').update({room_number:room}).eq('user_name',group.name);
+      const c=db();const {error}=await c.from('asset_users').update({room_number:room,updated_at:new Date().toISOString()}).eq('id',group.id);
       if(error){alert('部屋番号を変更できませんでした: '+error.message);return;}
       await renderUsers();return;
     }
-    const userEdit=e.target.closest('.user-name-edit');
+    const userEdit=e.target.closest('.user-master-edit');
     if(userEdit){
       const group=userGroups[Number(userEdit.dataset.index)];if(!group)return;
-      const next=prompt('使用者の新しい名前を入力してください',group.name);if(!next||!next.trim()||next.trim()===group.name)return;
-      if(!confirm(`「${group.name}」を「${next.trim()}」へ変更しますか？\nこの使用者が登録されている ${group.items.length} 件の備品すべてに反映されます。`))return;
-      const c=db();const {error}=await c.from('assets').update({user_name:next.trim()}).eq('user_name',group.name);
-      if(error){alert('使用者名を変更できませんでした: '+error.message);return;}
+      const name=prompt('使用者名',group.name||'');if(name===null||!name.trim())return;
+      const department=prompt('部署',group.department||'');if(department===null)return;
+      const location=prompt('居住・管理場所',group.location||'');if(location===null)return;
+      const c=db();
+      const {error}=await c.from('asset_users').update({name:name.trim(),department:department.trim()||null,location:location.trim()||null,updated_at:new Date().toISOString()}).eq('id',group.id);
+      if(error){alert('使用者情報を変更できませんでした: '+error.message);return;}
+      const {error:assetError}=await c.from('assets').update({user_name:name.trim()}).eq('assigned_user_id',group.id);
+      if(assetError){alert('使用者名は変更しましたが、備品側の表示名更新に失敗しました: '+assetError.message);return;}
       await renderUsers();return;
     }
     const promote=e.target.closest('.profile-promote');
