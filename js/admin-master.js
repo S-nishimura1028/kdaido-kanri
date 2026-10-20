@@ -300,6 +300,7 @@
         }
         close();
         await renderUsers();
+        document.dispatchEvent(new Event('asset-user-master-updated'));
         if(warning)alert(warning);
       }catch(err){errorBox.textContent=err.message||'保存できませんでした。';}
       finally{save.disabled=false;save.textContent=target?'変更を保存':'登録する';}

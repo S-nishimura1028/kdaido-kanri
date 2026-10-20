@@ -5,6 +5,29 @@
   let db, currentUser=null, profile=null, assets=[], categories=[], locations=[], departments=[], assetUsers=[], pendingPhotoFile=null, pendingLabelPhotoFile=null; const photoUrlCache=new Map();
   const statusClass=s=>({'未使用':'ok','使用中':'use','修理中':'repair','廃棄':'dispose'}[s]||'');
   const ACQ_MARK='【取得方法】';
+
+  // The master record (asset_users.id) is the single current source of user identity.
+  // Legacy assets.user_name is written only as a compatibility snapshot.
+  function userNameForDisplay(person){
+    const full=String(person?.name||'').trim();
+    const department=String(person?.department||'').trim();
+    const prefix=department && full.startsWith(department)?full.slice(department.length):'';
+    return prefix && /^[\s\u3000]+/.test(prefix)?prefix.trim():full;
+  }
+  function refreshUserOptions(){
+    const select=$('currentUserId');
+    const selected=select.value;
+    select.innerHTML='<option value="">使用者なし（未割当）</option>'+assetUsers.map(x=>{
+      const profile=[
+        x.department?'所属：'+x.department:'',
+        x.location?'居住：'+x.location:'',
+        x.room_number?'部屋：'+x.room_number:''
+      ].filter(Boolean).join(' / ');
+      return `<option value="${esc(x.id)}">${esc(userNameForDisplay(x))}${profile?`（${esc(profile)}）`:''}</option>`;
+    }).join('');
+    if(selected&&assetUsers.some(x=>x.id===selected))select.value=selected;
+  }
+
   function parseAcquisitionMethod(note){
     const s=String(note||'');
     const m=s.match(/【取得方法】([^\n\r]*)/);
@@ -83,10 +106,7 @@
     $('assetCategoryForm').innerHTML='<option value="">その他</option>'+categories.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
     $('locationForm').innerHTML='<option value="">未設定</option>'+locations.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
     $('departmentForm').innerHTML='<option value="">未設定</option>'+departments.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
-    $('currentUserId').innerHTML='<option value="">未使用</option>'+assetUsers.map(x=>{
-      const meta=[x.room_number,x.department,x.location].filter(Boolean).join(' / ');
-      return `<option value="${x.id}">${esc(x.name)}${meta?`（${esc(meta)}）`:''}</option>`;
-    }).join('');
+    refreshUserOptions();
   }
   async function loadDashboard(){
     const r=await db.from('assets').select('status,quantity,photo_path');if(r.error)throw r.error;
@@ -142,12 +162,50 @@
 
   function debounce(fn,ms){let t;return()=>{clearTimeout(t);t=setTimeout(fn,ms)}}
   $('assetSearch').oninput=debounce(loadAssets,300);$('assetStatus').onchange=loadAssets;$('assetCategory').onchange=loadAssets;
-  function openAssetForm(id=null){$('assetForm').reset();pendingPhotoFile=null;pendingLabelPhotoFile=null;$('assetPhoto').value='';$('assetLabelPhoto').value='';$('assetPhotoPreview').classList.add('hidden');$('assetPhotoPreview').src='';$('assetLabelPhotoPreview').classList.add('hidden');$('assetLabelPhotoPreview').src='';$('assetId').value='';$('quantity').value=1;$('unit').value='個';$('statusForm').value='未使用';$('currentUserId').value='';$('currentUserName').value='';$('acquisitionMethod').value='';if(id){const a=assets.find(x=>x.id===id);if(!a)return;$('assetDialogTitle').textContent='備品編集';$('assetId').value=a.id;$('assetNo').value=a.asset_no;$('assetName').value=a.name;$('assetCategoryForm').value=a.category_id||'';$('manufacturer').value=a.manufacturer||'';$('model').value=a.model||'';$('purchaseDate').value=a.purchase_date||'';$('acquisitionMethod').value=a.acquisition_method||parseAcquisitionMethod(a.note||a.notes);$('purchasePrice').value=a.purchase_price||'';$('locationForm').value=a.location_id||'';$('departmentForm').value=a.department_id||'';if(a.assigned_user_id&&assetUsers.some(u=>u.id===a.assigned_user_id)){$('currentUserId').value=a.assigned_user_id;$('currentUserName').value=a.user_name||'';}else if(a.user_name){const legacy=document.createElement('option');legacy.value='legacy';legacy.textContent=`${a.user_name}（旧データ）`;legacy.dataset.name=a.user_name;$('currentUserId').appendChild(legacy);$('currentUserId').value='legacy';$('currentUserName').value=a.user_name;}else{$('currentUserId').value='';$('currentUserName').value='';}$('quantity').value=a.quantity;$('unit').value=a.unit||'個';$('statusForm').value=a.status;$('note').value=parseUserNote(a.note||a.notes);setPhotoPreview(a.photo_path);setLabelPhotoPreview(a.label_photo_path)}else $('assetDialogTitle').textContent='備品登録';$('assetFormError').textContent='';$('assetDialog').showModal();}
+  function openAssetForm(id=null){
+    $('assetForm').reset();
+    pendingPhotoFile=null;pendingLabelPhotoFile=null;
+    $('assetPhoto').value='';$('assetLabelPhoto').value='';
+    $('assetPhotoPreview').classList.add('hidden');$('assetPhotoPreview').src='';
+    $('assetLabelPhotoPreview').classList.add('hidden');$('assetLabelPhotoPreview').src='';
+    $('assetId').value='';$('quantity').value=1;$('unit').value='個';
+    $('statusForm').value='未使用';
+    // Rebuild to remove any temporary legacy entry from the previous edit.
+    refreshUserOptions();$('currentUserId').value='';
+    $('acquisitionMethod').value='';
+    if(id){
+      const a=assets.find(x=>x.id===id);if(!a)return;
+      $('assetDialogTitle').textContent='備品編集';
+      $('assetId').value=a.id;$('assetNo').value=a.asset_no;$('assetName').value=a.name;
+      $('assetCategoryForm').value=a.category_id||'';$('manufacturer').value=a.manufacturer||'';
+      $('model').value=a.model||'';$('purchaseDate').value=a.purchase_date||'';
+      $('acquisitionMethod').value=a.acquisition_method||parseAcquisitionMethod(a.note||a.notes);
+      $('purchasePrice').value=a.purchase_price||'';
+      $('locationForm').value=a.location_id||'';$('departmentForm').value=a.department_id||'';
+      const master=assetUsers.find(u=>u.id===a.assigned_user_id);
+      if(master){
+        $('currentUserId').value=master.id;
+      }else if(a.assigned_user_id||a.user_name){
+        // Keep historical/inactive assignments intact unless the manager explicitly changes them.
+        const legacy=document.createElement('option');
+        legacy.value='legacy';
+        legacy.textContent=(a.user_name||'使用者名不明')+'（旧データ：使用者マスタで選択し直せます）';
+        legacy.dataset.name=a.user_name||'';
+        legacy.dataset.masterId=a.assigned_user_id||'';
+        $('currentUserId').appendChild(legacy);
+        $('currentUserId').value='legacy';
+      }
+      $('quantity').value=a.quantity;$('unit').value=a.unit||'個';
+      $('statusForm').value=a.status;$('note').value=parseUserNote(a.note||a.notes);
+      setPhotoPreview(a.photo_path);setLabelPhotoPreview(a.label_photo_path);
+    }else $('assetDialogTitle').textContent='備品登録';
+    $('assetFormError').textContent='';$('assetDialog').showModal();
+  }
   $('newAssetBtn').onclick=()=>openAssetForm();
   $('assetForm').addEventListener('submit',async e=>{
     e.preventDefault();$('assetFormError').textContent='';
-    const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyName=selectedUserId==='legacy'?($('currentUserId').selectedOptions[0]?.dataset.name||$('currentUserName').value||null):null;
-    const payload={asset_no:$('assetNo').value.trim(),name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
+    const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyOption=selectedUserId==='legacy' ? $('currentUserId').selectedOptions[0] : null,legacyName=legacyOption?.dataset.name||null,legacyId=legacyOption?.dataset.masterId||null;
+    const payload={asset_no:$('assetNo').value.trim(),name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
     try{
       let assetId=id, oldPath=null;
       if(id){const old=assets.find(x=>String(x.id)===String(id));oldPath=old?.photo_path||null;const r=await db.from('assets').update(payload).eq('id',id).select('id').single();if(r.error)throw r.error;}
@@ -158,7 +216,7 @@
   });
   async function showDetail(id){
     const a=assets.find(x=>String(x.id)===String(id));if(!a)return;
-    const rows=[['管理No.',a.asset_no],['名称',a.name],['メーカー',a.manufacturer||'-'],['取得年月日',a.purchase_date||'-'],['取得方法',a.acquisition_method||parseAcquisitionMethod(a.note||a.notes)||'-'],['取得単価',a.purchase_price?Number(a.purchase_price).toLocaleString()+'円':'-'],['購入部署',a.department||'-'],['使用・保管場所',a.location||'-'],['現在の使用者',a.user_name||'-'],['ステータス',a.status],['備考',parseUserNote(a.note||a.notes)||'-']];
+    const rows=[['管理No.',a.asset_no],['名称',a.name],['メーカー',a.manufacturer||'-'],['取得年月日',a.purchase_date||'-'],['取得方法',a.acquisition_method||parseAcquisitionMethod(a.note||a.notes)||'-'],['取得単価',a.purchase_price?Number(a.purchase_price).toLocaleString()+'円':'-'],['購入部署',a.department||'-'],['使用・保管場所',a.location||'-'],['貸出先（使用者マスタ）',assetUsers.find(u=>u.id===a.assigned_user_id)?userNameForDisplay(assetUsers.find(u=>u.id===a.assigned_user_id)):(a.user_name||'-')],['ステータス',a.status],['備考',parseUserNote(a.note||a.notes)||'-']];
     $('assetDetail').innerHTML=`
       <div id="detailPhotos" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px">
         <div id="detailPhotoWrap" class="hidden"><small style="display:block;margin-bottom:5px;color:var(--muted);font-weight:700">外観</small><img id="detailPhoto" alt="${esc(a.name)}の外観写真" style="width:100%;height:190px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:#f8fafc"></div>
@@ -191,5 +249,7 @@
   }
   async function loadHistory(){const r=await db.from('asset_history').select('*').order('created_at',{ascending:false}).limit(200);if(r.error)throw r.error;const rows=r.data||[];$('historyTable').innerHTML=rows.length?`<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${new Date(h.created_at||Date.now()).toLocaleString('ja-JP')}</td><td>${esc(h.asset_id||'-')}</td><td>${esc(h.action||h.event_type||'-')}</td><td>${esc(h.note||h.description||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">履歴はありません。</div>';}
   async function loadAdmin(){const p=await db.from('profiles').select('id,name,email,role').eq('role','admin').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span><strong>${esc(x.name||'名称未設定')}</strong><small> ${esc(x.email||'')}</small></span><span class="badge use">管理者</span></div>`).join('');[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
+  // Keep the dropdown current after edits to the dedicated user master.
+  document.addEventListener('asset-user-master-updated',()=>{if(db)loadMasters().catch(e=>console.warn('master refresh',e));});
   window.addEventListener('DOMContentLoaded',init);
 })();
