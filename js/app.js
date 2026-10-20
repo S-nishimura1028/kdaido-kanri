@@ -12,7 +12,7 @@
     const full=String(person?.name||'').trim();
     const department=String(person?.department||'').trim();
     const prefix=department && full.startsWith(department)?full.slice(department.length):'';
-    return prefix && /^[\\s\\u3000]+/.test(prefix)?prefix.trim():full;
+    return prefix && /^[\s\u3000]+/.test(prefix)?prefix.trim():full;
   }
   function refreshUserOptions(){
     const select=$('currentUserId');
