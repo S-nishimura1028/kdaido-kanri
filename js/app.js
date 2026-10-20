@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  let db, currentUser=null, profile=null, assets=[], categories=[], locations=[], departments=[], pendingPhotoFile=null, pendingLabelPhotoFile=null; const photoUrlCache=new Map();
+  let db, currentUser=null, profile=null, assets=[], categories=[], locations=[], departments=[], assetUsers=[], pendingPhotoFile=null, pendingLabelPhotoFile=null; const photoUrlCache=new Map();
   const statusClass=s=>({'未使用':'ok','使用中':'use','修理中':'repair','廃棄':'dispose'}[s]||'');
   const ACQ_MARK='【取得方法】';
   function parseAcquisitionMethod(note){
@@ -71,13 +71,22 @@
   $('mobileMenu').onclick=()=>document.querySelector('.sidebar').classList.toggle('open');
   function go(page){const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理'};document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));$(page+'Page').classList.remove('hidden');$('pageTitle').textContent=titles[page];document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='admin'&&isManager())loadAdmin();}
   async function loadMasters(){
-    const [c,l,d]=await Promise.all([db.from('categories').select('*').eq('is_active',true).order('name'),db.from('locations').select('*').eq('is_active',true).order('name'),db.from('departments').select('*').eq('is_active',true).order('name')]);
-    for(const r of [c,l,d])if(r.error)throw r.error;
-    categories=c.data||[];locations=l.data||[];departments=d.data||[];
+    const [c,l,d,u]=await Promise.all([
+      db.from('categories').select('*').eq('is_active',true).order('name'),
+      db.from('locations').select('*').eq('is_active',true).order('name'),
+      db.from('departments').select('*').eq('is_active',true).order('name'),
+      db.from('asset_users').select('*').eq('is_active',true).order('name')
+    ]);
+    for(const r of [c,l,d,u])if(r.error)throw r.error;
+    categories=c.data||[];locations=l.data||[];departments=d.data||[];assetUsers=u.data||[];
     $('assetCategory').innerHTML='<option value="">すべてのカテゴリ</option>'+categories.map(x=>`<option>${esc(x.name)}</option>`).join('');
     $('assetCategoryForm').innerHTML='<option value="">その他</option>'+categories.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
     $('locationForm').innerHTML='<option value="">未設定</option>'+locations.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
     $('departmentForm').innerHTML='<option value="">未設定</option>'+departments.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+    $('currentUserId').innerHTML='<option value="">未使用</option>'+assetUsers.map(x=>{
+      const meta=[x.room_number,x.department,x.location].filter(Boolean).join(' / ');
+      return `<option value="${x.id}">${esc(x.name)}${meta?`（${esc(meta)}）`:''}</option>`;
+    }).join('');
   }
   async function loadDashboard(){
     const r=await db.from('assets').select('status,quantity,photo_path');if(r.error)throw r.error;
@@ -133,12 +142,12 @@
 
   function debounce(fn,ms){let t;return()=>{clearTimeout(t);t=setTimeout(fn,ms)}}
   $('assetSearch').oninput=debounce(loadAssets,300);$('assetStatus').onchange=loadAssets;$('assetCategory').onchange=loadAssets;
-  function openAssetForm(id=null){$('assetForm').reset();pendingPhotoFile=null;pendingLabelPhotoFile=null;$('assetPhoto').value='';$('assetLabelPhoto').value='';$('assetPhotoPreview').classList.add('hidden');$('assetPhotoPreview').src='';$('assetLabelPhotoPreview').classList.add('hidden');$('assetLabelPhotoPreview').src='';$('assetId').value='';$('quantity').value=1;$('unit').value='個';$('statusForm').value='未使用';$('currentUserName').value='';$('acquisitionMethod').value='';if(id){const a=assets.find(x=>x.id===id);if(!a)return;$('assetDialogTitle').textContent='備品編集';$('assetId').value=a.id;$('assetNo').value=a.asset_no;$('assetName').value=a.name;$('assetCategoryForm').value=a.category_id||'';$('manufacturer').value=a.manufacturer||'';$('model').value=a.model||'';$('purchaseDate').value=a.purchase_date||'';$('acquisitionMethod').value=a.acquisition_method||parseAcquisitionMethod(a.note||a.notes);$('purchasePrice').value=a.purchase_price||'';$('locationForm').value=a.location_id||'';$('departmentForm').value=a.department_id||'';$('currentUserName').value=a.user_name||'';$('quantity').value=a.quantity;$('unit').value=a.unit||'個';$('statusForm').value=a.status;$('note').value=parseUserNote(a.note||a.notes);setPhotoPreview(a.photo_path);setLabelPhotoPreview(a.label_photo_path)}else $('assetDialogTitle').textContent='備品登録';$('assetFormError').textContent='';$('assetDialog').showModal();}
+  function openAssetForm(id=null){$('assetForm').reset();pendingPhotoFile=null;pendingLabelPhotoFile=null;$('assetPhoto').value='';$('assetLabelPhoto').value='';$('assetPhotoPreview').classList.add('hidden');$('assetPhotoPreview').src='';$('assetLabelPhotoPreview').classList.add('hidden');$('assetLabelPhotoPreview').src='';$('assetId').value='';$('quantity').value=1;$('unit').value='個';$('statusForm').value='未使用';$('currentUserId').value='';$('currentUserName').value='';$('acquisitionMethod').value='';if(id){const a=assets.find(x=>x.id===id);if(!a)return;$('assetDialogTitle').textContent='備品編集';$('assetId').value=a.id;$('assetNo').value=a.asset_no;$('assetName').value=a.name;$('assetCategoryForm').value=a.category_id||'';$('manufacturer').value=a.manufacturer||'';$('model').value=a.model||'';$('purchaseDate').value=a.purchase_date||'';$('acquisitionMethod').value=a.acquisition_method||parseAcquisitionMethod(a.note||a.notes);$('purchasePrice').value=a.purchase_price||'';$('locationForm').value=a.location_id||'';$('departmentForm').value=a.department_id||'';if(a.assigned_user_id&&assetUsers.some(u=>u.id===a.assigned_user_id)){$('currentUserId').value=a.assigned_user_id;$('currentUserName').value=a.user_name||'';}else if(a.user_name){const legacy=document.createElement('option');legacy.value='legacy';legacy.textContent=`${a.user_name}（旧データ）`;legacy.dataset.name=a.user_name;$('currentUserId').appendChild(legacy);$('currentUserId').value='legacy';$('currentUserName').value=a.user_name;}else{$('currentUserId').value='';$('currentUserName').value='';}$('quantity').value=a.quantity;$('unit').value=a.unit||'個';$('statusForm').value=a.status;$('note').value=parseUserNote(a.note||a.notes);setPhotoPreview(a.photo_path);setLabelPhotoPreview(a.label_photo_path)}else $('assetDialogTitle').textContent='備品登録';$('assetFormError').textContent='';$('assetDialog').showModal();}
   $('newAssetBtn').onclick=()=>openAssetForm();
   $('assetForm').addEventListener('submit',async e=>{
     e.preventDefault();$('assetFormError').textContent='';
-    const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value);
-    const payload={asset_no:$('assetNo').value.trim(),name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,user_name:$('currentUserName').value.trim()||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
+    const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyName=selectedUserId==='legacy'?($('currentUserId').selectedOptions[0]?.dataset.name||$('currentUserName').value||null):null;
+    const payload={asset_no:$('assetNo').value.trim(),name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
     try{
       let assetId=id, oldPath=null;
       if(id){const old=assets.find(x=>String(x.id)===String(id));oldPath=old?.photo_path||null;const r=await db.from('assets').update(payload).eq('id',id).select('id').single();if(r.error)throw r.error;}
