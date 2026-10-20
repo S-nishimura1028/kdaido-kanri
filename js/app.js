@@ -216,7 +216,7 @@
   });
   async function showDetail(id){
     const a=assets.find(x=>String(x.id)===String(id));if(!a)return;
-    const rows=[['管理No.',a.asset_no],['名称',a.name],['メーカー',a.manufacturer||'-'],['取得年月日',a.purchase_date||'-'],['取得方法',a.acquisition_method||parseAcquisitionMethod(a.note||a.notes)||'-'],['取得単価',a.purchase_price?Number(a.purchase_price).toLocaleString()+'円':'-'],['購入部署',a.department||'-'],['使用・保管場所',a.location||'-'],['使用者マスタ',assetUsers.find(u=>u.id===a.assigned_user_id)?.name||a.user_name||'-'],['ステータス',a.status],['備考',parseUserNote(a.note||a.notes)||'-']];
+    const rows=[['管理No.',a.asset_no],['名称',a.name],['メーカー',a.manufacturer||'-'],['取得年月日',a.purchase_date||'-'],['取得方法',a.acquisition_method||parseAcquisitionMethod(a.note||a.notes)||'-'],['取得単価',a.purchase_price?Number(a.purchase_price).toLocaleString()+'円':'-'],['購入部署',a.department||'-'],['使用・保管場所',a.location||'-'],['貸出先（使用者マスタ）',assetUsers.find(u=>u.id===a.assigned_user_id)?userNameForDisplay(assetUsers.find(u=>u.id===a.assigned_user_id)):(a.user_name||'-')],['ステータス',a.status],['備考',parseUserNote(a.note||a.notes)||'-']];
     $('assetDetail').innerHTML=`
       <div id="detailPhotos" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px">
         <div id="detailPhotoWrap" class="hidden"><small style="display:block;margin-bottom:5px;color:var(--muted);font-weight:700">外観</small><img id="detailPhoto" alt="${esc(a.name)}の外観写真" style="width:100%;height:190px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:#f8fafc"></div>
