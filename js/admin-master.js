@@ -9,6 +9,30 @@
     return client;
   }
 
+
+  // 2026-10-20に部屋番号を設定した10名だけ。削除は論理削除で、備品は変更しない。
+  const ROOM_SEED_USERS=[
+    {name:'ヴィボル',department:'営農部',room:'101'},
+    {name:'バユ',department:'営農部',room:'102'},
+    {name:'リー',department:'営農部',room:'103'},
+    {name:'アンディカ',department:'営農部',room:'北側和室'},
+    {name:'カイン',department:'農産部',room:'201'},
+    {name:'ラーフェ',department:'営農部',room:'202'},
+    {name:'クアン',department:'農産部',room:'205'},
+    {name:'ハウ',department:'農産部',room:'206'},
+    {name:'キエム',department:'農産部',room:'207'},
+    {name:'ゴックカイン',department:'農産部',room:'208'}
+  ];
+  function findRoomSeedTargets(users){
+    const result=[];
+    for(const spec of ROOM_SEED_USERS){
+      const matched=(users||[]).filter(u=>u.is_active===true&&u.name===spec.name&&u.department===spec.department&&u.room_number===spec.room&&u.location==='薄場寮');
+      if(matched.length>1)throw new Error('対象「'+spec.name+'」が重複しています。一括処理を中止しました。');
+      if(matched.length===1)result.push(matched[0]);
+    }
+    return result;
+  }
+
   const defs=[
     {table:'categories',host:'categoryAdmin',title:'カテゴリ'},
     {table:'locations',host:'locationAdmin',title:'保管場所'},
@@ -52,7 +76,7 @@
     if(document.getElementById('userAdmin'))return;
     const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
     const panel=document.createElement('div');panel.className='panel';
-    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 使用者追加</button></div><div class="admin-account-note">備品とは独立して使用者を管理します。転居時はここで部屋番号を変更すると、以後のシール印刷に反映されます。</div><div id="userAdmin" class="master-list"></div>';
+    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="master-mini danger" id="undoRoomSeedBtn" hidden>今回の部屋番号登録を取り消し</button><button type="button" class="primary" id="addAssetUserBtn">＋ 使用者追加</button></div><div class="admin-account-note">備品とは独立して使用者を管理します。転居時はここで部屋番号を変更すると、以後のシール印刷に反映されます。</div><div id="userAdmin" class="master-list"></div>';
     const first=grid.querySelector('.panel');
     if(first?.nextSibling)grid.insertBefore(panel,first.nextSibling);else grid.appendChild(panel);
   }
@@ -176,6 +200,14 @@
       byUser.get(a.assigned_user_id).push(a);
     });
     userGroups=(usersRes.data||[]).map(u=>({...u,items:byUser.get(u.id)||[]}));
+    const undoBtn=document.getElementById('undoRoomSeedBtn');
+    if(undoBtn){
+      try{
+        const targets=findRoomSeedTargets(usersRes.data||[]);
+        undoBtn.hidden=targets.length===0;
+        undoBtn.textContent='今回の部屋番号登録を一括取消（'+targets.length+'名）';
+      }catch(e){undoBtn.hidden=true;console.warn('room seed candidates',e);}
+    }
     host.innerHTML=userGroups.length?userGroups.map((g,i)=>{
       const items=g.items.slice(0,4).map(a=>`${esc(a.asset_no||'-')} ${esc(a.name||'')}`).join('、');
       const more=g.items.length>4?` ほか${g.items.length-4}件`:'';
@@ -212,6 +244,38 @@
 
   document.addEventListener('click',async e=>{
     if(e.target.closest('#addAdminAccountBtn')){openAdminCreateDialog();return;}
+
+    if(e.target.closest('#undoRoomSeedBtn')){
+      const button=document.getElementById('undoRoomSeedBtn');
+      if(!button||button.disabled)return;
+      button.disabled=true;
+      try{
+        if(!(await isAdmin()))throw new Error('管理者ログインが必要です。');
+        const c=db();
+        const {data:users,error:readError}=await c.from('asset_users')
+          .select('id,name,department,room_number,location,is_active')
+          .eq('is_active',true)
+          .in('name',ROOM_SEED_USERS.map(s=>s.name));
+        if(readError)throw readError;
+        const targets=findRoomSeedTargets(users||[]);
+        if(!targets.length){alert('今回の部屋番号登録に該当する有効な使用者はもういません。');await renderUsers();return;}
+        const names=targets.map(x=>x.name).join('、');
+        const missing=ROOM_SEED_USERS.filter(s=>!targets.some(t=>t.name===s.name)).map(s=>s.name);
+        const notice=missing.length?'\\n対象条件に一致しなかったため除外する名前：'+missing.join('、'):'';
+        if(!confirm('今回部屋番号を設定した使用者'+targets.length+'名を使用者マスタから非表示にしますか？\\n対象：'+names+
+          '\\n部屋番号を解除し、使用者を無効化します。既存の備品・履歴は変更しません。'+notice))return;
+        const {data:changed,error:updateError}=await c.from('asset_users')
+          .update({is_active:false,room_number:null,updated_at:new Date().toISOString()})
+          .in('id',targets.map(u=>u.id)).eq('is_active',true)
+          .select('id,name');
+        if(updateError)throw updateError;
+        if((changed||[]).length!==targets.length)throw new Error('更新件数が一致しません。管理画面を再読み込みして状態を確認してください。');
+        alert('使用者'+changed.length+'名を使用者マスタから非表示にし、部屋番号を解除しました。\\n備品・履歴は保持されています。');
+        reopenAdminAfterReload();
+      }catch(err){alert('一括取消に失敗しました: '+(err.message||'不明なエラー'));}
+      finally{button.disabled=false;}
+      return;
+    }
     if(e.target.closest('#addAssetUserBtn')){
       const name=prompt('使用者名を入力してください');if(!name||!name.trim())return;
       const department=prompt('部署を入力してください（例：営農部・農産部）','')||'';
