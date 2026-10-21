@@ -157,17 +157,6 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
         <button class="primary full" type="submit">管理者ログイン</button>
         <div id="loginError" class="error"></div>
       </form>
-      <section aria-label="パスワード不要のメールログイン" style="border-top:1px solid #e2e8f0;margin:16px 0;padding-top:16px">
-        <p style="font-size:13px;margin:0 0 10px">パスワードを忘れた場合（メールのリンクで認証）</p>
-        <button type="button" class="secondary full" id="magicLinkBtn">ログイン用メールを送信</button>
-        <div id="magicLinkPastePanel" style="margin-top:14px">
-          <label for="magicLinkPasteInput">メール内のログインリンクを貼り付け</label>
-          <p style="font-size:12px;line-height:1.6;margin:6px 0 9px">メールの「Log In」ボタンを右クリックし、「リンクのアドレスをコピー」を選んでください。リンクはクリックせず、下の欄に貼り付けます。</p>
-          <textarea id="magicLinkPasteInput" rows="2" autocomplete="off" spellcheck="false" placeholder="https://...supabase.co/auth/v1/verify?token=..." style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
-          <button type="button" id="verifyMagicLinkBtn" class="primary full" style="margin-top:10px">貼り付けたリンクでログイン</button>
-        </div>
-        <p id="magicLinkNotice" role="status" aria-live="polite" style="font-size:12px;line-height:1.6;margin-top:10px"></p>
-      </section>
     </div>
   </div>
 
@@ -294,7 +283,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
   <script src="js/config.js"></script>
   <script src="js/image-compress.js"></script>
-  <script src="js/app.js?v=20261021-link-local-1"></script>
+  <script src="js/app.js?v=20261021-password-login-1"></script>
   <script src="js/admin-master.js?v=20261021-inline-edit-2"></script>
   <!-- auto deploy test -->
 <script src="js/admin-analysis.js?v=20261001-1"></script>\n<script src="js/qr-print.js?v=20261020-1"></script>
