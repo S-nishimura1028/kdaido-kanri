@@ -2,9 +2,10 @@
 
 ## 全体像
 
-利用者
+利用者（切替後）
 - 管理者 → 通常URL → Vercel → Supabase Auth / Database / Storage
-- QR利用者 → 備品QR → Vercel公開画面 → 限定RPC / 写真更新Edge Function
+- 管理者 → 備品QR（固定 ?asset=UUID）→ ログイン → 該当備品の詳細 / 編集
+- 未ログイン・非管理者のQR情報取得は禁止
 
 ソースコードはGitHubで管理し、mainの更新をVercelが本番へデプロイします。
 
@@ -84,19 +85,11 @@ Auth users と紐づく。
 loans / inventory_checks 等の既存テーブルがある。
 現在の中心運用ではないため、用途確認なしに削除・再設計しない。
 
-## 公開QR
+## 管理者専用QR（サーバー切替後）
 URLの asset パラメータで対象備品を指定する。
-
-公開取得:
-public.get_public_asset(uuid)
-
-公開画面:
-js/public-asset.js
-
-公開写真更新:
-Supabase Edge Function public-photo-update
-
-QR利用者は通常の assets SELECT 権限を持たず、限定された公開経路だけを使用する。
+js/app.js が通常の管理者ログインと RLS を経由して備品を開く。
+js/public-asset.js は廃止し、匿名取得RPCと公開写真更新Edge Functionを使用しない。
+実際の本番API/Storage停止手順は docs/admin-only-qr-release-plan.md を参照。
 
 ## QRラベル
 js/qr-print.js
