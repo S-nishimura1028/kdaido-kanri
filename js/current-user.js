@@ -59,12 +59,13 @@
 
   async function editCurrentUser(){
     if(busy)return;
-    if(!currentAssetId){alert('備品を特定できませんでした。');return;}
+    const detailId=document.getElementById('detailDialog')?.dataset.assetId||currentAssetId;
+    if(!detailId){alert('備品を特定できませんでした。');return;}
     const c=db();if(!c){alert('接続準備ができていません。');return;}
     busy=true;
     try{
       const [assetResult,userResult]=await Promise.all([
-        c.from('assets').select('id,name,assigned_user_id,user_name,status').eq('id',currentAssetId).eq('is_deleted',false).maybeSingle(),
+        c.from('assets').select('id,name,assigned_user_id,user_name,status').eq('id',detailId).eq('is_deleted',false).maybeSingle(),
         c.from('asset_users').select('id,name,department,room_number').eq('is_active',true).order('name')
       ]);
       if(assetResult.error)throw assetResult.error;
