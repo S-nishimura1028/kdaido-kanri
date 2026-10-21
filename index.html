@@ -144,7 +144,16 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 </style>
 <style id="two-photo-mobile-fix">
 @media(max-width:560px){#detailPhotos{grid-template-columns:1fr!important}#detailPhoto,#detailLabelPhoto{height:auto!important;max-height:300px}}
-</style></head>
+</style><style id="mobile-logout-v1">
+.mobile-logout{display:none!important}
+@media(max-width:800px){
+  .topbar{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:8px!important}
+  .topbar>div{flex:1 1 auto!important;min-width:0!important;width:auto!important}
+  .topbar .mobile-logout{display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;min-height:44px!important;padding:8px 10px!important;font-size:12px!important}
+  #mobileMenu{display:none!important}
+}
+</style>
+</head>
 <body>
   <div id="loginView" class="login-view">
     <div class="login-card">
@@ -179,6 +188,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
           <h2 id="pageTitle">ダッシュボード</h2>
           <span id="userInfo"></span><span id="connectionStatus" class="connection-status">接続確認中…</span>
         </div>
+        <button id="mobileLogoutBtn" type="button" class="secondary mobile-logout">ログアウト</button>
         <button id="mobileMenu" class="icon-btn">☰</button>
       </header>
 
