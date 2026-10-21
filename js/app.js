@@ -96,7 +96,7 @@
     const notice=$('magicLinkNotice');
     showError('');
     notice.textContent='';
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
       showError('登録済みメールアドレスを入力してください。');
       $('loginEmail').focus();
       return;
