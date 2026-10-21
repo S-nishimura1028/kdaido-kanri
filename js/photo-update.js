@@ -43,9 +43,10 @@
   }
 
   async function openPhotoDialog(){
-    if(!currentAssetId){alert('備品を特定できませんでした。');return;}
+    const detailId=document.getElementById('detailDialog')?.dataset.assetId||currentAssetId;
+    if(!detailId){alert('備品を特定できませんでした。');return;}
     const db=getClient();if(!db){alert('接続準備ができていません。');return;}
-    const {data,error}=await db.from('assets').select('id,asset_no,name,photo_path,label_photo_path').eq('id',currentAssetId).single();
+    const {data,error}=await db.from('assets').select('id,asset_no,name,photo_path,label_photo_path').eq('id',detailId).single();
     if(error||!data){alert('備品情報を取得できませんでした。');return;}
     const d=ensureDialog();d.dataset.assetId=data.id;d.dataset.photoPath=data.photo_path||'';d.dataset.labelPhotoPath=data.label_photo_path||'';
     d.querySelector('#employeePhotoTitle').textContent=`${data.asset_no||''} / ${data.name||''}`;
