@@ -117,7 +117,7 @@
   async function loadAssets(){
     const search=$('assetSearch').value.trim().normalize('NFKC').toLowerCase();
     const st=$('assetStatus').value,cat=$('assetCategory').value;
-    let q=db.from('assets').select('*').eq('is_deleted',false).order('asset_no');
+    let q=db.from('assets').select('*').eq('is_deleted',false).order('asset_no').order('id');
     if(st)q=q.eq('status',st);if(cat)q=q.eq('category',cat);
     const rows=[];
     for(let offset=0;;offset+=500){
@@ -255,9 +255,8 @@
     e.preventDefault();$('assetFormError').textContent='';
     const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyOption=selectedUserId==='legacy' ? $('currentUserId').selectedOptions[0] : null,legacyName=legacyOption?.dataset.name||null,legacyId=legacyOption?.dataset.masterId||null;
     const payload={asset_no:$('assetNo').value.trim()||null,name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
-    const uploaded=[];let inserted=false,photoCommitted=false,saveCommitted=false;
+    const uploaded=[];let inserted=false,photoCommitted=false,saveCommitted=false,assetId=id;
     try{
-      let assetId=id;
       if(id){
         const r=await db.from('assets').update(payload).eq('id',id).eq('is_deleted',false).select('id').single();
         if(r.error)throw r.error;saveCommitted=true;
@@ -294,9 +293,20 @@
       await loadAssets();await loadDashboard();
     }catch(err){
       if(uploaded.length&&!photoCommitted){
-        try{const cleanup=await db.storage.from('asset-photos').remove(uploaded);
-          if(cleanup.error)console.warn('new photo cleanup',cleanup.error);
-        }catch(e){console.warn('new photo cleanup',e);}
+        try{
+          // On a network error the DB update might already be committed.
+          // Only remove uploads that are demonstrably unreferenced.
+          const {data:current, error:readError}=await db.from('assets')
+            .select('photo_path,label_photo_path').eq('id',id||assetId).maybeSingle();
+          if(!readError&&current){
+            const referenced=new Set([current.photo_path,current.label_photo_path].filter(Boolean));
+            const abandoned=uploaded.filter(p=>!referenced.has(p));
+            if(abandoned.length){
+              const cleanup=await db.storage.from('asset-photos').remove(abandoned);
+              if(cleanup.error)console.warn('new photo cleanup',cleanup.error);
+            }
+          }
+        }catch(e){console.warn('new photo cleanup skipped',e);}
       }
       console.error(err);
       $('assetFormError').textContent=(saveCommitted?'備品情報は保存されました。再登録せず一覧を確認してください。 ':'')+
