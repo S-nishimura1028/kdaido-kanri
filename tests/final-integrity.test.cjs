@@ -36,7 +36,7 @@ test('parallel searches cannot overwrite the newest search results',async()=>{
   await second;
   oldFinish({data:[{id:'old',name:'古い備品'}],error:null});
   await first;
-  assert.deepEqual(rendered,[['new']]);
+  assert.deepEqual(JSON.parse(JSON.stringify(rendered)),[['new']]);
 });
 
 test('rapid double submission creates only one asset and restores save button state',async()=>{
