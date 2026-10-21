@@ -328,6 +328,7 @@
         <canvas id="qrCanvas" style="max-width:100%"></canvas>
         <div id="qrError" class="form-error"></div>
       </div>`;
+    $('detailDialog').dataset.assetId=String(a.id);
     $('detailDialog').showModal();
     if(isManager())$('detailEditBtn').addEventListener('click',()=>{$('detailDialog').close();openAssetForm(a.id)});
     const qrButton=$('qrBtn');
