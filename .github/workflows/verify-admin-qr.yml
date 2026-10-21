@@ -1,0 +1,16 @@
+name: Verify admin QR
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/admin-only-qr-security]
+permissions:
+  contents: read
+jobs:
+  admin-qr-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run admin QR tests
+        run: node --test tests/admin-qr.test.cjs
