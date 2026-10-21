@@ -66,91 +66,55 @@ test('source files parse without syntax errors',()=>{
 });
 
 
-test('login UI uses the existing free Magic Link template',()=>{
-  const html=file('index.html');
-  assert.match(html,/id="magicLinkBtn"/);
-  assert.match(html,/id="magicLinkPasteInput"/);
-  assert.match(html,/id="verifyMagicLinkBtn"/);
-  assert.doesNotMatch(html,/id="emailOtpInput"/);
-  assert.match(code,/auth\.verifyOtp\(\{token_hash:tokenHash,type:'magiclink'\}\)/);
-  assert.match(code,/shouldCreateUser:false/);
-  assert.match(code,/profile\.role!=='admin' \|\| profile\.is_active!==true/);
-});
-test('email address validation remains correct',()=>{
-  assert.ok(code.includes(String.raw`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`));
-});
 
-function mockMagicLink(){
-  const elements={},calls=[];
-  function element(id){
-    if(!elements[id])elements[id]={
-      value:'',disabled:false,textContent:'',listeners:{},
-      addEventListener(event,handler){this.listeners[event]=handler},
-      focus(){},
+test('login view shows only email and password controls',()=>{
+  const html=file('index.html');
+  assert.match(html,/id="loginForm"/);
+  assert.match(html,/id="loginEmail"/);
+  assert.match(html,/id="loginPassword"/);
+  assert.doesNotMatch(html,/id="(?:magicLinkBtn|emailOtpInput|verifyEmailOtpBtn|magicLinkPasteInput|verifyMagicLinkBtn)"/);
+});
+test('no temporary email-based authentication remains',()=>{
+  assert.doesNotMatch(code,/auth\.signInWithOtp\(/);
+  assert.doesNotMatch(code,/auth\.verifyOtp\(/);
+  assert.doesNotMatch(code,/magicLinkBtn|verifyMagicLinkBtn|magicLinkPasteInput|emailOtpInput/);
+});
+test('authenticated users must still have active admin profiles',()=>{
+  assert.match(code,/profile\.role!=='admin' \|\| profile\.is_active!==true/);
+  assert.match(code,/db\.auth\.signOut\(\)/);
+  assert.match(code,/db\.from\('profiles'\)\.select\('\*'\)\.eq\('id',user\.id\)/);
+});
+test('password login uses Supabase Auth with the entered credentials',async()=>{
+  const app=code.indexOf("  $('loginForm').addEventListener('submit',async e=>{");
+  const end=code.indexOf("\n  $('logoutBtn').onclick",app);
+  assert.ok(app>=0 && end>app, 'password handler exists');
+  const calls=[],els={};
+  function $(id){
+    if(!els[id])els[id]={
+      value:'',textContent:'',disabled:false,listeners:{},
+      addEventListener(event,listener){this.listeners[event]=listener},
+      querySelector(){return els.submit || (els.submit={disabled:false,textContent:'管理者ログイン'})}
     };
-    return elements[id];
+    return els[id];
   }
-  let sendError=null,verificationError=null;
-  const sandbox={
-    $:element,URL,window:{SUPABASE_URL:'https://rhjnrguhnkfotggzxjfs.supabase.co'},
-    showError(msg){element('loginError').textContent=msg},
-    db:{auth:{
-      async signInWithOtp(options){calls.push({action:'send',options});return{error:sendError}},
-      async verifyOtp(options){calls.push({action:'verify',options});return{error:verificationError}},
-    }}
+  let error=null;
+  const ctx={$,
+    db:{auth:{async signInWithPassword(params){calls.push(params);return{error}}}},
+    showError(message){$('loginError').textContent=message},
+    console:{error(){}},
   };
-  const start=code.indexOf('  // The default Supabase email template');
-  const end=code.indexOf("  $('logoutBtn').onclick",start);
-  assert.ok(start>=0&&end>start,'magic link handler exists');
-  vm.runInNewContext(code.slice(start,end),sandbox);
-  return {elements,calls,element,failSend(){sendError={status:429,message:'rate limit'}},failVerify(){verificationError={message:'invalid token'}}};
-}
-const safeToken='a'.repeat(64);
-const sampleLink='https://rhjnrguhnkfotggzxjfs.supabase.co/auth/v1/verify?token='+safeToken+'&type=magiclink&redirect_to=https%3A%2F%2Fexample.org';
-test('login mail can only be requested for an existing account',async()=>{
-  const h=mockMagicLink();
-  h.element('loginEmail').value='nishimuradaido@gmail.com';
-  await h.element('magicLinkBtn').listeners.click();
-  const req=h.calls.find(x=>x.action==='send');
-  assert.equal(req.options.email,'nishimuradaido@gmail.com');
-  assert.equal(req.options.options.shouldCreateUser,false);
-  assert.equal(req.options.options.emailRedirectTo,undefined);
-});
-test('valid Supabase Magic Link is verified locally in the same browser',async()=>{
-  const h=mockMagicLink();
-  h.element('magicLinkPasteInput').value=sampleLink;
-  await h.element('verifyMagicLinkBtn').listeners.click();
-  const req=h.calls.find(x=>x.action==='verify');
-  assert.equal(req.options.token_hash,safeToken);
-  assert.equal(req.options.type,'magiclink');
-  assert.equal(h.element('magicLinkPasteInput').value,'');
-  assert.match(h.element('magicLinkNotice').textContent,/認証に成功/);
-});
-test('malicious site URL never reaches auth verification',async()=>{
-  const h=mockMagicLink();
-  h.element('magicLinkPasteInput').value='https://evil.example/auth/v1/verify?token='+safeToken+'&type=magiclink';
-  await h.element('verifyMagicLinkBtn').listeners.click();
-  assert.equal(h.calls.filter(x=>x.action==='verify').length,0);
-  assert.match(h.element('loginError').textContent,/Supabaseから届いた/);
-});
-test('invalid or missing token rejected locally',async()=>{
-  const h=mockMagicLink();
-  h.element('magicLinkPasteInput').value='https://rhjnrguhnkfotggzxjfs.supabase.co/auth/v1/verify?token=invalid&type=magiclink';
-  await h.element('verifyMagicLinkBtn').listeners.click();
-  assert.equal(h.calls.filter(x=>x.action==='verify').length,0);
-});
-test('expired or used token cannot produce a success message',async()=>{
-  const h=mockMagicLink();
-  h.failVerify();
-  h.element('magicLinkPasteInput').value=sampleLink;
-  await h.element('verifyMagicLinkBtn').listeners.click();
-  assert.match(h.element('loginError').textContent,/無効または使用済み/);
-  assert.doesNotMatch(h.element('magicLinkNotice').textContent,/認証に成功/);
-});
-test('email send rate limits do not trigger hidden retry loops',async()=>{
-  const h=mockMagicLink();h.failSend();
-  h.element('loginEmail').value='nishimuradaido@gmail.com';
-  await h.element('magicLinkBtn').listeners.click();
-  assert.equal(h.calls.filter(x=>x.action==='send').length,1);
-  assert.match(h.element('loginError').textContent,/回数制限/);
+  vm.runInNewContext(code.slice(app,end),ctx);
+  $('loginEmail').value='staff@example.com';
+  $('loginPassword').value='a-test-password';
+  const e={preventDefault(){},submitter:{disabled:false,textContent:'管理者ログイン'}};
+  await $('loginForm').listeners.submit(e);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].email,'staff@example.com');
+  assert.equal(calls[0].password,'a-test-password');
+  assert.equal(e.submitter.disabled,false);
+  assert.equal(e.submitter.textContent,'ログイン');
+  error={message:'Invalid login credentials'};
+  await $('loginForm').listeners.submit(e);
+  assert.equal(calls.length,2);
+  assert.match($('loginError').textContent,/Invalid login credentials/);
 });
