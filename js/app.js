@@ -88,8 +88,11 @@
     }catch(err){console.error(err);showError(err.message||'ログインに失敗しました。');}
     finally{btn.disabled=false;btn.textContent='ログイン';}
   });
-  // One-time email login for existing users only. Admin authorization is
-  // still enforced by enterApp() and the Supabase table/storage RLS policies.
+  // An email OTP creates a normal Supabase session in this browser; it does
+  // not rely on magic-link redirects through Vercel preview authentication.
+  // Only already-registered users can request OTPs. The existing admin profile
+  // authorization in enterApp() remains required after verification.
+  let pendingOtpEmail='';
   $('magicLinkBtn').addEventListener('click',async()=>{
     const email=$('loginEmail').value.trim();
     const button=$('magicLinkBtn');
@@ -106,21 +109,65 @@
       return;
     }
     button.disabled=true;
-    button.textContent='メール送信中…';
+    button.textContent='コード送信中…';
     try{
-      const redirectTo=window.location.href.split('#')[0];
+      // The six-digit code is delivered by the project's Magic Link email
+      // template using {{ .Token }}. No redirect URL is needed for email OTP.
       const {error}=await db.auth.signInWithOtp({
         email,
-        options:{shouldCreateUser:false,emailRedirectTo:redirectTo}
+        options:{shouldCreateUser:false}
       });
       if(error)throw error;
-      notice.textContent='ログイン用メールを送信しました。届いたメールのリンクからアクセスしてください。リンクは一度だけ使用できます。';
+      pendingOtpEmail=email;
+      $('emailOtpInput').value='';
+      $('emailOtpPanel').classList.remove('hidden');
+      notice.textContent='メールに届いた6桁のコードをこの画面で入力してください。リンクを開く必要はありません。';
+      $('emailOtpInput').focus();
     }catch(err){
-      console.error('magic link request',err);
-      showError('メールを送れませんでした。'+(err.message||'少し時間をおいて再度お試しください。'));
+      console.error('email OTP request',err);
+      const limited=err.status===429 || /rate limit|too many/i.test(err.message||'');
+      showError(limited?'送信回数の制限中です。しばらく時間をおいてから再試行してください。':('コードを送信できませんでした。'+(err.message||'')));
     }finally{
       button.disabled=false;
-      button.textContent='メールで一時ログイン';
+      button.textContent='6桁コードをメールで送信';
+    }
+  });
+  $('verifyEmailOtpBtn').addEventListener('click',async()=>{
+    const token=$('emailOtpInput').value.trim();
+    const button=$('verifyEmailOtpBtn');
+    showError('');
+    if(!pendingOtpEmail){
+      showError('先にメールアドレスを入力して認証コードを送信してください。');
+      return;
+    }
+    if(!/^\d{6}$/.test(token)){
+      showError('メールに届いた6桁の数字を入力してください。');
+      return;
+    }
+    if(!db){
+      showError('接続準備中です。少し待ってから再度お試しください。');
+      return;
+    }
+    button.disabled=true;
+    button.textContent='認証中…';
+    try{
+      const {error}=await db.auth.verifyOtp({email:pendingOtpEmail,token,type:'email'});
+      if(error)throw error;
+      $('emailOtpInput').value='';
+      $('magicLinkNotice').textContent='認証に成功しました。管理者画面を読み込んでいます。';
+      // onAuthStateChange handles session creation and checks the admin role.
+    }catch(err){
+      console.error('email OTP verification failed',err?.message||'');
+      showError('認証できませんでした。コードの入力間違い、期限切れ、または使用済みを確認してください。');
+    }finally{
+      button.disabled=false;
+      button.textContent='認証コードでログイン';
+    }
+  });
+  $('emailOtpInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      $('verifyEmailOtpBtn').click();
     }
   });
   $('logoutBtn').onclick=()=>db.auth.signOut();
