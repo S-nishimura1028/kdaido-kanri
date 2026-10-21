@@ -249,7 +249,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
       <div class="dialog-head"><h3 id="assetDialogTitle">備品登録</h3><button value="cancel" class="close">×</button></div>
       <input type="hidden" id="assetId">
       <div class="form-grid">
-        <label>管理No.*<input id="assetNo" required></label>
+        <label>管理No.（自動採番）<input id="assetNo" placeholder="保存すると自動で付番されます" readonly><small style="font-size:12px;color:var(--muted);font-weight:500">新規登録するとKD-0001形式の番号が自動発行されます。既存番号は変更できません。</small></label>
         <label>名称*<input id="assetName" required></label>
         <label>メーカー<input id="manufacturer"></label>
         <label>取得年月日<input id="purchaseDate" type="date"></label>
@@ -293,7 +293,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
   <script src="js/config.js?v=20261022-ops-2"></script>
   <script src="js/image-compress.js"></script>
-  <script src="js/app.js?v=20261022-ops-final-1"></script>
+  <script src="js/app.js?v=20261022-kd-auto-1"></script>
   <script src="js/admin-master.js?v=20261021-inline-edit-2"></script>
   <!-- auto deploy test -->
 <script src="js/admin-analysis.js?v=20261001-1"></script>\n<script src="js/qr-print.js?v=20261022-2"></script>
