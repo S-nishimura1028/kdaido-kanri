@@ -271,7 +271,7 @@
     const area=$('qrArea'), c=$('qrCanvas'), err=$('qrError');
     if(!area||!c)return;
     area.classList.remove('hidden');err.textContent='';
-    const url=new URL(location.origin+location.pathname);url.searchParams.set('asset',a.id);
+    const url=new URL(window.APP_BASE_URL||location.origin+location.pathname);url.pathname='/';url.searchParams.set('asset',a.id);
     try{
       if(!window.QRCode||typeof QRCode.toCanvas!=='function')throw new Error('QRライブラリを読み込めませんでした。ページを再読み込みしてください。');
       await QRCode.toCanvas(c,url.toString(),{width:240,margin:2,errorCorrectionLevel:'M'});
