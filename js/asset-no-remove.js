@@ -6,7 +6,8 @@
     if(!input)return;
     input.required=false;
     input.removeAttribute('required');
-    input.value='';
+    // Keep the existing hidden asset_no value. Clearing it would silently
+    // erase legacy management numbers whenever an asset is edited.
     const label=input.closest('label');
     if(label)label.style.display='none';
   }

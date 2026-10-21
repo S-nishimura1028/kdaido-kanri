@@ -43,9 +43,10 @@
   }
 
   async function openPhotoDialog(){
-    if(!currentAssetId){alert('備品を特定できませんでした。');return;}
+    const detailId=document.getElementById('detailDialog')?.dataset.assetId||currentAssetId;
+    if(!detailId){alert('備品を特定できませんでした。');return;}
     const db=getClient();if(!db){alert('接続準備ができていません。');return;}
-    const {data,error}=await db.from('assets').select('id,asset_no,name,photo_path,label_photo_path').eq('id',currentAssetId).single();
+    const {data,error}=await db.from('assets').select('id,asset_no,name,photo_path,label_photo_path').eq('id',detailId).single();
     if(error||!data){alert('備品情報を取得できませんでした。');return;}
     const d=ensureDialog();d.dataset.assetId=data.id;d.dataset.photoPath=data.photo_path||'';d.dataset.labelPhotoPath=data.label_photo_path||'';
     d.querySelector('#employeePhotoTitle').textContent=`${data.asset_no||''} / ${data.name||''}`;
@@ -65,19 +66,56 @@
   }
 
   async function savePhotos(e){
-    e.preventDefault();const d=document.getElementById('employeePhotoDialog'),err=d.querySelector('#employeePhotoError'),save=d.querySelector('#employeePhotoSave');
-    err.textContent='';save.disabled=true;save.textContent='保存中…';const db=getClient();
+    e.preventDefault();
+    const d=document.getElementById('employeePhotoDialog'),
+      err=d.querySelector('#employeePhotoError'),save=d.querySelector('#employeePhotoSave');
+    if(save.disabled)return;
+    err.textContent='';save.disabled=true;save.textContent='保存中…';
+    const c=getClient();
+    const uploaded=[];
     try{
-      const assetId=d.dataset.assetId,old1=d.dataset.photoPath||null,old2=d.dataset.labelPhotoPath||null;
-      const f1=d.querySelector('#employeePhotoFile1').files?.[0]||null,f2=d.querySelector('#employeePhotoFile2').files?.[0]||null;
+      const assetId=d.dataset.assetId;
+      const old1=d.dataset.photoPath||null,old2=d.dataset.labelPhotoPath||null;
+      const f1=d.querySelector('#employeePhotoFile1').files?.[0]||null;
+      const f2=d.querySelector('#employeePhotoFile2').files?.[0]||null;
       if(!f1&&!f2)throw new Error('更新する写真を1枚以上選んでください。');
-      const new1=f1?await upload(db,assetId,f1,'outside'):old1,new2=f2?await upload(db,assetId,f2,'label'):old2;
-      const {error}=await db.rpc('update_asset_photos',{p_asset_id:assetId,p_photo_path:new1,p_label_photo_path:new2});if(error)throw error;
-      if(f1&&old1&&old1!==new1)await db.storage.from('asset-photos').remove([old1]).catch(()=>{});
-      if(f2&&old2&&old2!==new2)await db.storage.from('asset-photos').remove([old2]).catch(()=>{});
+      const new1=f1?await upload(c,assetId,f1,'outside'):old1;
+      if(f1)uploaded.push(new1);
+      const new2=f2?await upload(c,assetId,f2,'label'):old2;
+      if(f2)uploaded.push(new2);
+      const {error}=await c.rpc('update_asset_photos',{
+        p_asset_id:assetId,p_photo_path:new1,p_label_photo_path:new2
+      });
+      if(error)throw error;
+      // Do not delete the old photos until the asset row points at the new ones.
+      const obsolete=[f1&&old1&&old1!==new1?old1:null,f2&&old2&&old2!==new2?old2:null].filter(Boolean);
+      if(obsolete.length){
+        const removed=await c.storage.from('asset-photos').remove(obsolete);
+        if(removed.error)console.warn('old photo cleanup',removed.error);
+      }
       d.close();location.reload();
-    }catch(ex){console.error(ex);err.textContent=ex.message||'写真の保存に失敗しました。';}
-    finally{save.disabled=false;save.textContent='写真を保存';}
+    }catch(ex){
+      console.error(ex);
+      if(uploaded.length){
+        try{
+          // The RPC may have committed even if the HTTP response was lost.
+          // Never delete a path currently referenced by an asset.
+          const {data, error:readError}=await c.from('assets')
+            .select('photo_path,label_photo_path').eq('id',d.dataset.assetId).maybeSingle();
+          if(!readError&&data){
+            const referenced=new Set([data.photo_path,data.label_photo_path].filter(Boolean));
+            const abandoned=uploaded.filter(path=>!referenced.has(path));
+            if(abandoned.length){
+              const removed=await c.storage.from('asset-photos').remove(abandoned);
+              if(removed.error)console.warn('new photo cleanup',removed.error);
+            }
+          }
+        }catch(cleanupError){console.warn('new photo cleanup skipped',cleanupError);}
+      }
+      err.textContent=ex.message||'写真の保存に失敗しました。';
+    }finally{
+      save.disabled=false;save.textContent='写真を保存';
+    }
   }
 
   function addPhotoButton(){

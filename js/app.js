@@ -89,6 +89,7 @@
     finally{btn.disabled=false;btn.textContent='ログイン';}
   });
   $('logoutBtn').onclick=()=>db.auth.signOut();
+  $('mobileLogoutBtn').onclick=()=>db.auth.signOut();
   document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.page));
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
   $('mobileMenu').onclick=()=>document.querySelector('.sidebar').classList.toggle('open');
@@ -109,11 +110,29 @@
     refreshUserOptions();
   }
   async function loadDashboard(){
-    const r=await db.from('assets').select('status,quantity,photo_path');if(r.error)throw r.error;
+    const r=await db.from('assets').select('status,quantity,photo_path').eq('is_deleted',false);if(r.error)throw r.error;
     const rows=r.data||[];$('statTotal').textContent=rows.reduce((n,a)=>n+Number(a.quantity||0),0);$('statAvailable').textContent=rows.filter(a=>a.status==='未使用').reduce((n,a)=>n+Number(a.quantity||0),0);$('statUse').textContent=rows.filter(a=>a.status==='使用中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statRepair').textContent=rows.filter(a=>a.status==='修理中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statDisposed').textContent=rows.filter(a=>a.status==='廃棄').reduce((n,a)=>n+Number(a.quantity||0),0); $('statPhoto').textContent=rows.filter(a=>a.photo_path).length;
-    const recent=await db.from('assets').select('*').order('created_at',{ascending:false}).limit(5);if(recent.error)throw recent.error;renderAssetsTable(recent.data||[],'recentAssets',false);
+    const recent=await db.from('assets').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(5);if(recent.error)throw recent.error;renderAssetsTable(recent.data||[],'recentAssets',false);
   }
-  async function loadAssets(){let q=db.from('assets').select('*').order('asset_no');const search=$('assetSearch').value.trim(),st=$('assetStatus').value,cat=$('assetCategory').value;if(st)q=q.eq('status',st);if(cat)q=q.eq('category',cat);if(search)q=q.or(`asset_no.ilike.%${search}%,name.ilike.%${search}%,manufacturer.ilike.%${search}%,model.ilike.%${search}%`);const r=await q;if(r.error)throw r.error;assets=r.data||[];renderAssetsTable(assets,'assetTable',true);openAssetFromUrlOnce();}
+  async function loadAssets(){
+    const search=$('assetSearch').value.trim().normalize('NFKC').toLowerCase();
+    const st=$('assetStatus').value,cat=$('assetCategory').value;
+    let q=db.from('assets').select('*').eq('is_deleted',false).order('asset_no').order('id');
+    if(st)q=q.eq('status',st);if(cat)q=q.eq('category',cat);
+    const rows=[];
+    for(let offset=0;;offset+=500){
+      const r=await q.range(offset,offset+499);
+      if(r.error)throw r.error;
+      rows.push(...(r.data||[]));if((r.data||[]).length<500)break;
+    }
+    // Including current-user master and physical storage location in search.
+    assets=rows.filter(a=>!search||[a.asset_no,a.name,a.manufacturer,a.model,a.location,
+      a.department,a.user_name,...(assetUsers.filter(u=>u.id===a.assigned_user_id)
+        .flatMap(u=>[u.name,u.department,u.location,u.room_number]))]
+      .some(v=>String(v||'').normalize('NFKC').toLowerCase().includes(search)));
+    renderAssetsTable(assets,'assetTable',true);
+    openAssetFromUrlOnce();
+  }
   function renderAssetsTable(rows,target,actions){if(!rows.length){$(target).innerHTML='<div class="empty">該当する備品がありません。</div>';return}$(target).innerHTML=`<table><thead><tr><th>備品番号</th><th>備品名</th><th>カテゴリ</th><th>保管場所</th><th>数量</th><th>状態</th>${actions?'<th>操作</th>':''}</tr></thead><tbody>${rows.map(a=>`<tr class="clickable" data-id="${a.id}"><td>${esc(a.asset_no)}</td><td>${esc(a.name)}</td><td>${esc(a.category)}</td><td>${esc(a.location||'-')}</td><td>${a.quantity}${esc(a.unit)}</td><td><span class="badge ${statusClass(a.status)}">${esc(a.status)}</span></td>${actions?`<td>${isManager()?`<button class="secondary edit-asset" data-id="${a.id}">編集</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table>`;$(target).querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('.edit-asset'))return;showDetail(tr.dataset.id)});$(target).querySelectorAll('.edit-asset').forEach(b=>b.onclick=e=>{e.stopPropagation();openAssetForm(b.dataset.id)});}
 
   async function signedPhotoUrl(path){
@@ -145,14 +164,13 @@
     const img=$('assetLabelPhotoPreview');
     if(pendingLabelPhotoFile){img.src=URL.createObjectURL(pendingLabelPhotoFile);img.classList.remove('hidden')}
   });
-  async function uploadAssetPhotoFile(assetId,file,oldPath,kind='outside'){
-    if(!file)return oldPath||null;
+  async function uploadAssetPhotoFile(assetId,file,kind='outside'){
     if(file.size>10*1024*1024)throw new Error('写真は1枚10MB以下にしてください。');
+    if(file.type&&!file.type.startsWith('image/'))throw new Error('画像ファイルを選択してください。');
     const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase()||'jpg';
-    const path=`${assetId}/${kind}-${Date.now()}.${ext}`;
-    const {error}=await db.storage.from('asset-photos').upload(path,file,{contentType:file.type||undefined,upsert:false});
+    const path=`${assetId}/${kind}-${Date.now()}-${crypto.randomUUID().slice(0,8)}.${ext}`;
+    const {error}=await db.storage.from('asset-photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
     if(error)throw error;
-    if(oldPath){await db.storage.from('asset-photos').remove([oldPath]).catch(()=>{});photoUrlCache.delete(oldPath)}
     return path;
   }
   let openedAssetFromUrl=false;
@@ -236,14 +254,64 @@
   $('assetForm').addEventListener('submit',async e=>{
     e.preventDefault();$('assetFormError').textContent='';
     const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyOption=selectedUserId==='legacy' ? $('currentUserId').selectedOptions[0] : null,legacyName=legacyOption?.dataset.name||null,legacyId=legacyOption?.dataset.masterId||null;
-    const payload={asset_no:$('assetNo').value.trim(),name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
+    const payload={asset_no:$('assetNo').value.trim()||null,name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
+    const uploaded=[];let inserted=false,photoCommitted=false,saveCommitted=false,assetId=id;
     try{
-      let assetId=id, oldPath=null;
-      if(id){const old=assets.find(x=>String(x.id)===String(id));oldPath=old?.photo_path||null;const r=await db.from('assets').update(payload).eq('id',id).select('id').single();if(r.error)throw r.error;}
-      else{const r=await db.from('assets').insert(payload).select('id').single();if(r.error)throw r.error;assetId=r.data.id;}
-      if(pendingPhotoFile||pendingLabelPhotoFile){const old=assets.find(x=>String(x.id)===String(assetId));const photoPath=await uploadAssetPhotoFile(assetId,pendingPhotoFile,old?.photo_path||null,'outside');const labelPhotoPath=await uploadAssetPhotoFile(assetId,pendingLabelPhotoFile,old?.label_photo_path||null,'label');const r2=await db.from('assets').update({photo_path:photoPath,label_photo_path:labelPhotoPath}).eq('id',assetId);if(r2.error)throw r2.error;}
-      $('assetDialog').close();pendingPhotoFile=null;pendingLabelPhotoFile=null;await loadAssets();await loadDashboard();
-    }catch(err){console.error(err);$('assetFormError').textContent=err.message||'保存に失敗しました。'}
+      if(id){
+        const r=await db.from('assets').update(payload).eq('id',id).eq('is_deleted',false).select('id').single();
+        if(r.error)throw r.error;saveCommitted=true;
+      }else{
+        const r=await db.from('assets').insert(payload).select('id').single();
+        if(r.error)throw r.error;
+        assetId=r.data.id;inserted=true;saveCommitted=true;
+      }
+      if(pendingPhotoFile||pendingLabelPhotoFile){
+        const old=assets.find(x=>String(x.id)===String(assetId));
+        const oldPhoto=old?.photo_path||null,oldLabel=old?.label_photo_path||null;
+        let photoPath=oldPhoto,labelPhotoPath=oldLabel;
+        if(pendingPhotoFile){
+          photoPath=await uploadAssetPhotoFile(assetId,pendingPhotoFile,'outside');
+          uploaded.push(photoPath);
+        }
+        if(pendingLabelPhotoFile){
+          labelPhotoPath=await uploadAssetPhotoFile(assetId,pendingLabelPhotoFile,'label');
+          uploaded.push(labelPhotoPath);
+        }
+        // Old files stay available until all new uploads and DB changes succeed.
+        const r2=await db.from('assets').update({photo_path:photoPath,label_photo_path:labelPhotoPath})
+          .eq('id',assetId).eq('is_deleted',false).select('id').single();
+        if(r2.error)throw r2.error;
+        photoCommitted=true;
+        const oldPaths=[pendingPhotoFile&&oldPhoto,pendingLabelPhotoFile&&oldLabel].filter(Boolean);
+        if(oldPaths.length){
+          const removed=await db.storage.from('asset-photos').remove(oldPaths);
+          if(removed.error)console.warn('old photo cleanup',removed.error);
+          else oldPaths.forEach(p=>photoUrlCache.delete(p));
+        }
+      }
+      $('assetDialog').close();pendingPhotoFile=null;pendingLabelPhotoFile=null;
+      await loadAssets();await loadDashboard();
+    }catch(err){
+      if(uploaded.length&&!photoCommitted){
+        try{
+          // On a network error the DB update might already be committed.
+          // Only remove uploads that are demonstrably unreferenced.
+          const {data:current, error:readError}=await db.from('assets')
+            .select('photo_path,label_photo_path').eq('id',id||assetId).maybeSingle();
+          if(!readError&&current){
+            const referenced=new Set([current.photo_path,current.label_photo_path].filter(Boolean));
+            const abandoned=uploaded.filter(p=>!referenced.has(p));
+            if(abandoned.length){
+              const cleanup=await db.storage.from('asset-photos').remove(abandoned);
+              if(cleanup.error)console.warn('new photo cleanup',cleanup.error);
+            }
+          }
+        }catch(e){console.warn('new photo cleanup skipped',e);}
+      }
+      console.error(err);
+      $('assetFormError').textContent=(saveCommitted?'備品情報は保存されました。再登録せず一覧を確認してください。 ':'')+
+        (err.message||'保存に失敗しました。');
+    }
   });
   async function showDetail(id){
     const a=assets.find(x=>String(x.id)===String(id));if(!a)return;
@@ -260,6 +328,7 @@
         <canvas id="qrCanvas" style="max-width:100%"></canvas>
         <div id="qrError" class="form-error"></div>
       </div>`;
+    $('detailDialog').dataset.assetId=String(a.id);
     $('detailDialog').showModal();
     if(isManager())$('detailEditBtn').addEventListener('click',()=>{$('detailDialog').close();openAssetForm(a.id)});
     const qrButton=$('qrBtn');
@@ -278,7 +347,10 @@
       area.scrollIntoView({behavior:'smooth',block:'nearest'});
     }catch(e){console.error(e);err.textContent=e.message||'QRコードを表示できませんでした。';}
   }
-  async function loadHistory(){const r=await db.from('asset_history').select('*').order('created_at',{ascending:false}).limit(200);if(r.error)throw r.error;const rows=r.data||[];$('historyTable').innerHTML=rows.length?`<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${new Date(h.created_at||Date.now()).toLocaleString('ja-JP')}</td><td>${esc(h.asset_id||'-')}</td><td>${esc(h.action||h.event_type||'-')}</td><td>${esc(h.note||h.description||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">履歴はありません。</div>';}
+  async function loadHistory(){const rows=[];for(let offset=0;;offset+=500){
+    const r=await db.from('asset_history').select('*').order('created_at',{ascending:false}).range(offset,offset+499);
+    if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<500)break;
+  }$('historyTable').innerHTML=rows.length?`<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${new Date(h.created_at||Date.now()).toLocaleString('ja-JP')}</td><td>${esc(h.asset_id||'-')}</td><td>${esc(h.action||h.event_type||'-')}</td><td>${esc(h.note||h.description||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">履歴はありません。</div>';}
   async function loadAdmin(){const p=await db.from('profiles').select('id,name,email,role').eq('role','admin').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span><strong>${esc(x.name||'名称未設定')}</strong><small> ${esc(x.email||'')}</small></span><span class="badge use">管理者</span></div>`).join('');[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
   // Keep the dropdown current after edits to the dedicated user master.
   document.addEventListener('asset-user-master-updated',()=>{if(db)loadMasters().catch(e=>console.warn('master refresh',e));});

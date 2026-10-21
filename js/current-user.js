@@ -1,173 +1,116 @@
 (function(){
   'use strict';
 
-  const USER_PREFIX='__USER__:';
+  // Only the asset_users master is authoritative. Never write user_name alone:
+  // doing so would disagree with assets.assigned_user_id and the normal editor.
   let client=null;
   let currentAssetId=new URL(location.href).searchParams.get('asset')||null;
-
-  function db(){
+  let busy=false;
+  const db=()=>{
     if(client)return client;
     if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
-    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-    return client;
-  }
+    return (client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY));
+  };
 
-  async function loadUserChoices(c,currentName){
-    const [masters,used]=await Promise.all([
-      c.from('categories').select('name').like('name',USER_PREFIX+'%').eq('is_active',true).order('name'),
-      c.from('assets').select('user_name').not('user_name','is',null)
-    ]);
-    if(masters.error)throw masters.error;
-    if(used.error)throw used.error;
-    const names=new Set();
-    (masters.data||[]).forEach(x=>{
-      const raw=String(x.name||'');
-      if(raw.startsWith(USER_PREFIX)){
-        const name=raw.slice(USER_PREFIX.length).trim();
-        if(name)names.add(name);
-      }
-    });
-    (used.data||[]).forEach(x=>{
-      const name=String(x.user_name||'').trim();
-      if(name)names.add(name);
-    });
-    if(currentName)names.add(String(currentName).trim());
-    return [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'ja'));
-  }
-
-  function ensurePickerStyle(){
-    if(document.getElementById('currentUserPickerStyle'))return;
-    const style=document.createElement('style');
-    style.id='currentUserPickerStyle';
-    style.textContent=`
-      #currentUserPickerDialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;overflow:visible}
-      #currentUserPickerDialog::backdrop{background:rgba(4,30,47,.55);backdrop-filter:blur(3px)}
-      #currentUserPickerDialog .current-user-picker-card{width:min(440px,calc(100vw - 32px));background:#fff;border-radius:18px;padding:20px;box-sizing:border-box;box-shadow:0 24px 70px rgba(0,0,0,.28);border:1px solid #dbe8e3}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function chooseUser(asset,names){
+  function pickUser(asset,users){
     return new Promise(resolve=>{
       document.getElementById('currentUserPickerDialog')?.remove();
-      ensurePickerStyle();
-
-      // 備品詳細も <dialog> なので、通常の fixed 要素だとその背面に隠れる。
-      // 使用者選択も modal dialog にしてブラウザの top layer 上で重ねる。
       const dialog=document.createElement('dialog');
       dialog.id='currentUserPickerDialog';
-
+      dialog.style.cssText='border:0;padding:0;background:transparent;max-width:none;max-height:none';
       const card=document.createElement('div');
-      card.className='current-user-picker-card';
-      const title=document.createElement('h3');
-      title.textContent='使用者変更';
-      title.style.cssText='margin:0 0 6px;color:#173f59';
-      const desc=document.createElement('div');
-      desc.textContent=`${asset.asset_no||''} / ${asset.name||''}`;
-      desc.style.cssText='font-size:13px;color:#668078;margin-bottom:14px';
-      const label=document.createElement('label');
-      label.textContent='現在の使用者';
-      label.style.cssText='display:flex;flex-direction:column;gap:7px;font-weight:700;font-size:14px';
+      card.style.cssText='width:min(440px,calc(100vw - 32px));background:#fff;border-radius:18px;padding:20px;box-sizing:border-box;box-shadow:0 24px 70px rgba(0,0,0,.28)';
+      const title=document.createElement('h3');title.textContent='使用者変更';title.style.margin='0 0 12px';
+      const desc=document.createElement('p');desc.textContent=asset.name||'備品';desc.style.fontSize='13px';
+      const label=document.createElement('label');label.textContent='使用者マスタから選択';
+      label.style.cssText='display:flex;flex-direction:column;gap:7px;font-weight:700';
       const select=document.createElement('select');
-      select.id='currentUserPickerSelect';
-      select.style.cssText='width:100%;min-height:48px;border:1px solid #ccddd7;border-radius:11px;padding:10px 11px;background:#fff;font-size:16px';
-      const empty=document.createElement('option');
-      empty.value='';
-      empty.textContent='使用者なし（未使用）';
-      select.appendChild(empty);
-      names.forEach(name=>{
-        const option=document.createElement('option');
-        option.value=name;
-        option.textContent=name;
+      select.style.cssText='width:100%;min-height:48px;padding:10px;border:1px solid #ccddd7;border-radius:10px;font-size:16px';
+      const empty=document.createElement('option');empty.value='';empty.textContent='使用者なし（未割当）';select.appendChild(empty);
+      users.forEach(u=>{
+        const option=document.createElement('option');option.value=u.id;
+        option.textContent=[u.name,u.department?'所属：'+u.department:'',u.room_number?'部屋：'+u.room_number:''].filter(Boolean).join(' / ');
         select.appendChild(option);
       });
-      select.value=asset.user_name||'';
-      label.appendChild(select);
-
-      const actions=document.createElement('div');
-      actions.style.cssText='display:flex;gap:10px;justify-content:flex-end;margin-top:18px';
-      const cancel=document.createElement('button');
-      cancel.type='button';cancel.className='secondary';cancel.textContent='キャンセル';cancel.style.minHeight='46px';
-      const save=document.createElement('button');
-      save.type='button';save.className='primary';save.textContent='変更する';save.style.minHeight='46px';
-      actions.append(cancel,save);
-      card.append(title,desc,label,actions);
-      dialog.appendChild(card);
-      document.body.appendChild(dialog);
-
-      let finished=false;
-      const finish=value=>{
-        if(finished)return;
-        finished=true;
-        try{if(dialog.open)dialog.close();}catch(_e){}
-        dialog.remove();
-        resolve(value);
-      };
-      cancel.addEventListener('click',()=>finish(undefined));
-      save.addEventListener('click',()=>finish(select.value));
-      dialog.addEventListener('cancel',e=>{e.preventDefault();finish(undefined);});
-      dialog.addEventListener('click',e=>{
-        const r=card.getBoundingClientRect();
-        if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)finish(undefined);
-      });
-
-      try{
-        dialog.showModal();
-        setTimeout(()=>select.focus(),0);
-      }catch(err){
-        console.error('user picker dialog',err);
-        finish(undefined);
-        alert('使用者選択を開けませんでした。ページを再読み込みしてお試しください。');
+      if(asset.assigned_user_id && !users.some(u=>u.id===asset.assigned_user_id)){
+        const legacy=document.createElement('option');
+        legacy.value=asset.assigned_user_id;
+        legacy.textContent=(asset.user_name||'旧使用者')+'（マスタ無効：変更する場合は選び直してください）';
+        select.appendChild(legacy);
       }
+      select.value=asset.assigned_user_id||'';
+      label.appendChild(select);
+      const actions=document.createElement('div');actions.style.cssText='display:flex;justify-content:flex-end;gap:10px;margin-top:18px';
+      const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='キャンセル';
+      const save=document.createElement('button');save.type='button';save.className='primary';save.textContent='変更する';
+      actions.append(cancel,save);card.append(title,desc,label,actions);dialog.appendChild(card);document.body.appendChild(dialog);
+      let settled=false;
+      const finish=value=>{
+        if(settled)return;settled=true;
+        try{if(dialog.open)dialog.close();}catch(_e){}
+        dialog.remove();resolve(value);
+      };
+      cancel.onclick=()=>finish(null);
+      save.onclick=()=>finish({id:select.value});
+      dialog.addEventListener('cancel',e=>{e.preventDefault();finish(null);});
+      try{dialog.showModal();}catch(e){console.error(e);finish(null);}
     });
   }
 
   async function editCurrentUser(){
-    if(!currentAssetId){alert('備品を特定できませんでした。');return;}
+    if(busy)return;
+    const detailId=document.getElementById('detailDialog')?.dataset.assetId||currentAssetId;
+    if(!detailId){alert('備品を特定できませんでした。');return;}
     const c=db();if(!c){alert('接続準備ができていません。');return;}
-    const {data:a,error}=await c.from('assets').select('id,asset_no,name,user_name,status').eq('id',currentAssetId).single();
-    if(error||!a){alert('備品情報を取得できませんでした。');return;}
-    let names;
-    try{names=await loadUserChoices(c,a.user_name);}catch(err){alert('使用者一覧を読み込めませんでした: '+(err.message||''));return;}
-    const value=await chooseUser(a,names);
-    if(value===undefined)return;
-    const name=String(value||'').trim();
-    const payload={user_name:name||null};
-    if(['未使用','使用中'].includes(a.status))payload.status=name?'使用中':'未使用';
-    const {error:updateError}=await c.from('assets').update(payload).eq('id',a.id);
-    if(updateError){alert('使用者を更新できませんでした: '+updateError.message);return;}
-    location.reload();
+    busy=true;
+    try{
+      const [assetResult,userResult]=await Promise.all([
+        c.from('assets').select('id,name,assigned_user_id,user_name,status').eq('id',detailId).eq('is_deleted',false).maybeSingle(),
+        c.from('asset_users').select('id,name,department,room_number').eq('is_active',true).order('name')
+      ]);
+      if(assetResult.error)throw assetResult.error;
+      if(userResult.error)throw userResult.error;
+      const asset=assetResult.data;if(!asset)throw new Error('対象の備品がありません。');
+      const users=userResult.data||[];
+      const choice=await pickUser(asset,users);
+      if(!choice)return;
+      const user=users.find(u=>u.id===choice.id);
+      // An inactive master entry is preserved when not changed.
+      if(choice.id && !user && choice.id!==asset.assigned_user_id)throw new Error('選択された使用者を確認できません。');
+      const payload={
+        assigned_user_id:choice.id||null,
+        user_name:user?.name||(choice.id===asset.assigned_user_id?asset.user_name:null)||null
+      };
+      if(['未使用','使用中'].includes(asset.status)){
+        payload.status=choice.id?'使用中':'未使用';
+      }
+      const {data,error}=await c.from('assets').update(payload)
+        .eq('id',asset.id).eq('is_deleted',false).select('id').single();
+      if(error)throw error;
+      if(!data)throw new Error('変更を保存できませんでした。');
+      location.reload();
+    }catch(e){console.error(e);alert('使用者を更新できませんでした。'+(e.message?'\n'+e.message:''));}
+    finally{busy=false;}
   }
 
   function ensureButton(){
-    const detail=document.getElementById('detailDialog');
+    const dialog=document.getElementById('detailDialog');
     const actions=document.querySelector('#assetDetail .dialog-actions');
-    if(!detail||!detail.open||!actions)return;
-    if(!document.getElementById('detailEditBtn'))return;
-
-    const existing=[...actions.querySelectorAll('button')].filter(b=>b.id==='currentUserQuickEditBtn'||b.textContent.trim()==='使用者変更');
-    existing.slice(1).forEach(b=>b.remove());
-    if(existing[0]){existing[0].id='currentUserQuickEditBtn';return;}
-
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.id='currentUserQuickEditBtn';
-    btn.className='secondary';
-    btn.textContent='使用者変更';
-    btn.style.minHeight='48px';
-    const qr=document.getElementById('qrBtn');
-    actions.insertBefore(btn,qr||null);
+    if(!dialog?.open||!actions||!document.getElementById('detailEditBtn'))return;
+    if(document.getElementById('currentUserQuickEditBtn'))return;
+    const button=document.createElement('button');button.type='button';
+    button.id='currentUserQuickEditBtn';button.className='secondary';
+    button.textContent='使用者変更';button.style.minHeight='48px';
+    actions.insertBefore(button,document.getElementById('qrBtn')||null);
   }
-
   document.addEventListener('click',e=>{
     const row=e.target.closest('tr[data-id]');
     if(row?.dataset.id)currentAssetId=row.dataset.id;
     if(e.target.closest('#currentUserQuickEditBtn')){
-      e.preventDefault();e.stopPropagation();editCurrentUser();return;
+      e.preventDefault();e.stopPropagation();editCurrentUser();
     }
     setTimeout(ensureButton,0);
   },true);
-
   const obs=new MutationObserver(()=>setTimeout(ensureButton,0));
   document.addEventListener('DOMContentLoaded',()=>{
     obs.observe(document.getElementById('detailDialog')||document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['open']});

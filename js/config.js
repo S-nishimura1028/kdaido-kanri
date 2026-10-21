@@ -28,7 +28,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 備品詳細から「現在の使用者」をすぐ変更できる補助機能。
 (function loadCurrentUserEditor(){
   const s=document.createElement('script');
-  s.src='js/current-user.js';
+  s.src='js/current-user.js?v=20261022-ops-2';
   s.defer=true;
   document.head.appendChild(s);
 })();
@@ -52,7 +52,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 履歴を「備品番号 / 備品名」にし、使用者と変更者も表示。
 (function loadHistoryLabels(){
   const s=document.createElement('script');
-  s.src='js/history-label.js?v=20260816-3';
+  s.src='js/history-label.js?v=20261022-ops-1';
   s.defer=true;
   document.head.appendChild(s);
 })();
@@ -68,7 +68,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 管理No.を登録・編集・一覧・詳細から外す。
 (function loadAssetNoRemove(){
   const s=document.createElement('script');
-  s.src='js/asset-no-remove.js?v=20260819-1';
+  s.src='js/asset-no-remove.js?v=20261022-ops-1';
   s.defer=true;
   document.head.appendChild(s);
 })();
@@ -76,7 +76,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 備品詳細からテスト備品などを削除。DB上は履歴を残すソフト削除。
 (function loadAssetDelete(){
   const s=document.createElement('script');
-  s.src='js/asset-delete.js?v=20260819-1';
+  s.src='js/asset-delete.js?v=20261022-ops-2';
   s.defer=true;
   document.head.appendChild(s);
 })();
