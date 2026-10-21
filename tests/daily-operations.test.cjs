@@ -98,7 +98,8 @@ test('quick user change updates master ID and name in one atomic asset update',a
   const context={
     currentAssetId:assetId,busy:false,
     db:()=>dbClient,pickUser:async()=>({id:'u2'}),
-    location:{reload(){reloads++;}},alert(){throw new Error('unexpected error alert');},console
+    location:{reload(){reloads++;}},document:{getElementById(){return{dataset:{assetId}}}},
+    alert(){throw new Error('unexpected error alert');},console
   };
   const run=vm.runInNewContext(src.slice(start,end)+';editCurrentUser',context);
   await run();
@@ -118,4 +119,24 @@ test('photo replacement never removes old photos before database update',()=>{
   assert.ok(quickRpc>0&&quickCleanup>quickRpc);
   assert.match(quick,/const referenced=new Set/);
   assert.match(app,/const referenced=new Set/);
+});
+
+test('deletion always targets the asset displayed, not a stale URL',async()=>{
+  const app=file('js/app.js'),del=file('js/asset-delete.js');
+  assert.match(app,/\$\('detailDialog'\)\.dataset\.assetId=String\(a\.id\)/);
+  const start=del.indexOf('  async function resolveAssetId(){');
+  const end=del.indexOf('\n  async function deleteAsset(',start);
+  assert.ok(start>=0&&end>start);
+  const context={
+    document:{getElementById(){return{dataset:{assetId:'visible-record'}}}},
+    location:{href:'https://example.test/?asset=outdated-id'},
+    currentAssetId:'another-record',URL
+  };
+  const resolve=vm.runInNewContext(del.slice(start,end)+';resolveAssetId',context);
+  assert.equal(await resolve(),'visible-record');
+});
+
+test('quick user editor and photo editor resolve the currently displayed asset',()=>{
+  assert.match(file('js/current-user.js'),/dataset\.assetId\|\|currentAssetId/);
+  assert.match(file('js/photo-update.js'),/dataset\.assetId\|\|currentAssetId/);
 });
