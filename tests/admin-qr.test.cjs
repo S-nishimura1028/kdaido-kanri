@@ -64,3 +64,13 @@ test('source files parse without syntax errors',()=>{
     assert.doesNotThrow(()=>new vm.Script(file(p),{filename:p}));
   }
 });
+
+test('temporary login uses Supabase Magic Link for an existing account only',()=>{
+  assert.match(file('index.html'),/id="magicLinkBtn"/);
+  assert.match(code,/auth\.signInWithOtp\(/);
+  assert.match(code,/shouldCreateUser:false/);
+  assert.match(code,/emailRedirectTo:redirectTo/);
+});
+test('email address validation does not accidentally escape regex metacharacters',()=>{
+  assert.ok(code.includes(String.raw`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`));
+});
