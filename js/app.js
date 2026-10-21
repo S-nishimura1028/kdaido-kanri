@@ -114,7 +114,9 @@
     const rows=r.data||[];$('statTotal').textContent=rows.reduce((n,a)=>n+Number(a.quantity||0),0);$('statAvailable').textContent=rows.filter(a=>a.status==='未使用').reduce((n,a)=>n+Number(a.quantity||0),0);$('statUse').textContent=rows.filter(a=>a.status==='使用中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statRepair').textContent=rows.filter(a=>a.status==='修理中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statDisposed').textContent=rows.filter(a=>a.status==='廃棄').reduce((n,a)=>n+Number(a.quantity||0),0); $('statPhoto').textContent=rows.filter(a=>a.photo_path).length;
     const recent=await db.from('assets').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(5);if(recent.error)throw recent.error;renderAssetsTable(recent.data||[],'recentAssets',false);
   }
+  let assetLoadSequence=0;
   async function loadAssets(){
+    const thisLoad=++assetLoadSequence;
     const search=$('assetSearch').value.trim().normalize('NFKC').toLowerCase();
     const st=$('assetStatus').value,cat=$('assetCategory').value;
     let q=db.from('assets').select('*').eq('is_deleted',false).order('asset_no').order('id');
@@ -123,8 +125,10 @@
     for(let offset=0;;offset+=500){
       const r=await q.range(offset,offset+499);
       if(r.error)throw r.error;
+      if(thisLoad!==assetLoadSequence)return;
       rows.push(...(r.data||[]));if((r.data||[]).length<500)break;
     }
+    if(thisLoad!==assetLoadSequence)return;
     // Including current-user master and physical storage location in search.
     assets=rows.filter(a=>!search||[a.asset_no,a.name,a.manufacturer,a.model,a.location,
       a.department,a.user_name,...(assetUsers.filter(u=>u.id===a.assigned_user_id)
@@ -251,8 +255,14 @@
     $('assetFormError').textContent='';$('assetDialog').showModal();
   }
   $('newAssetBtn').onclick=()=>openAssetForm();
+  let assetFormSaving=false;
   $('assetForm').addEventListener('submit',async e=>{
-    e.preventDefault();$('assetFormError').textContent='';
+    e.preventDefault();
+    if(assetFormSaving)return;
+    assetFormSaving=true;
+    const saveButton=$('saveAssetBtn');
+    if(saveButton){saveButton.disabled=true;saveButton.textContent='保存中…';}
+    $('assetFormError').textContent='';
     const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyOption=selectedUserId==='legacy' ? $('currentUserId').selectedOptions[0] : null,legacyName=legacyOption?.dataset.name||null,legacyId=legacyOption?.dataset.masterId||null;
     const payload={asset_no:$('assetNo').value.trim()||null,name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
     const uploaded=[];let inserted=false,photoCommitted=false,saveCommitted=false,assetId=id;
@@ -311,6 +321,9 @@
       console.error(err);
       $('assetFormError').textContent=(saveCommitted?'備品情報は保存されました。再登録せず一覧を確認してください。 ':'')+
         (err.message||'保存に失敗しました。');
+    }finally{
+      assetFormSaving=false;
+      if(saveButton){saveButton.disabled=false;saveButton.textContent='保存';}
     }
   });
   async function showDetail(id){
