@@ -1,8 +1,9 @@
 # セキュリティ・権限
 
-## 原則
-業務画面は管理者専用。
-現場利用はログイン不要のQR画面に限定する。
+## 原則（新仕様）
+業務画面も備品QRも管理者専用。
+現場でQRを読み取った場合も管理者ログインを要求し、管理者権限をサーバー側で検証する。
+サーバー側の切替状況は docs/admin-only-qr-release-plan.md の適用記録で管理する。
 
 ## 管理者
 profiles.role = 'admin' かつ is_active = true のユーザーのみ業務画面へ入れる。
@@ -22,45 +23,10 @@ profiles.role = 'admin' かつ is_active = true のユーザーのみ業務画�
 - 分析
 - 管理設定
 
-## QR利用者
-ログイン不要。
-
-公開する情報:
-- 管理No.
-- 備品名
-- カテゴリ
-- メーカー
-- 型番
-- 製造番号
-- 部署
-- 使用・保管場所
-- 現在の使用者
-- ステータス
-- 外観写真
-- ラベル写真
-
-公開しない情報:
-- 取得単価
-- 取得年月日
-- 取得方法
-- 管理者向け備考
-- 履歴
-- 分析画面
-- 他の備品一覧
-
-更新可能:
-- 外観写真
-- ラベル写真
-
-更新不可:
-- 備品名
-- 使用者
-- 保管場所
-- 部署
-- ステータス
-- 取得情報
-- 備考
-- その他の管理項目
+## QR利用（管理者専用）
+QRは備品IDへのショートカットであり、公開権限を与えない。
+匿名利用者と非管理者には備品情報を返却せず、写真の更新も禁止する。
+管理者だけが既存の備品詳細・編集・写真更新へ進める。
 
 ## RLS
 通常の業務テーブルは private.is_admin() を基本条件とする。
@@ -72,18 +38,18 @@ profiles.role = 'admin' かつ is_active = true のユーザーのみ業務画�
 現在の管理者限定RLS変更は:
 supabase/migrations/20261010_admin_qr_only.sql
 
-## Public RPC
-public.get_public_asset(uuid) は公開QR専用。
-Security Definerを使用しているため、返却カラムを増やす時は必ず公開可否を確認する。
+## 旧Public RPC（停止対象）
+public.get_public_asset(uuid) の匿名実行権限を剥奪する。
+SECURITY DEFINERの公開経路を残さない。
+レビュードキュメントと検証用SQL: docs/admin-only-qr-release-plan.md。
 
 ## 写真
 Storage bucket:
 asset-photos
 
-QRからの写真更新は public-photo-update Edge Function を経由する。
-
-public-photo-update はservice roleを内部で使用するため、
-処理対象を写真2項目以外へ広げない。
+旧 public-photo-update Edge Function を停止し、匿名アップロードを受け付けない。
+Storage asset-photos バケットは非公開へ変更し、管理者用署名URLを利用する。
+Storage RLS の private.is_admin() による管理者制限を保持する。
 
 ## 秘密情報
 以下をGitHubへコミットしない。

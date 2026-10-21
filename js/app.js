@@ -66,7 +66,7 @@
       profile=r.data;
       if(!profile || profile.role!=='admin' || profile.is_active!==true){
         await db.auth.signOut();
-        throw new Error('このアプリは管理者アカウント専用です。現場では備品のQRコードから情報を確認してください。');
+        throw new Error('このアプリとQR備品情報は管理者アカウント専用です。');
       }
       $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
       $('userInfo').textContent=`${profile?.name||user.email} / ${roleLabel(profile?.role)}`;
@@ -156,8 +156,39 @@
     return path;
   }
   let openedAssetFromUrl=false;
-  function openAssetFromUrlOnce(){
-    if(openedAssetFromUrl)return;const id=new URL(location.href).searchParams.get('asset');if(id&&assets.some(a=>String(a.id)===String(id))){openedAssetFromUrl=true;showDetail(id)}
+  function showQrOpenError(message){
+    go('assets');
+    const notice=document.createElement('div');
+    notice.setAttribute('role','alert');
+    notice.className='error';
+    notice.style.cssText='padding:12px;margin-bottom:12px;border:1px solid #e6adb1;border-radius:10px';
+    notice.textContent=message;
+    $('assetTable').prepend(notice);
+  }
+  async function openAssetFromUrlOnce(){
+    if(openedAssetFromUrl)return;
+    const id=new URL(location.href).searchParams.get('asset');
+    if(!id)return;
+    openedAssetFromUrl=true;
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)){
+      showQrOpenError('QRコードの形式が正しくありません。');
+      return;
+    }
+    try{
+      let asset=assets.find(a=>String(a.id)===id);
+      if(!asset){
+        const {data,error}=await db.from('assets').select('*').eq('id',id).eq('is_deleted',false).maybeSingle();
+        if(error)throw error;
+        asset=data;
+        if(asset)assets.push(asset);
+      }
+      if(!asset){showQrOpenError('該当する備品が見つかりません。削除済みの可能性があります。');return;}
+      go('assets');
+      await showDetail(asset.id);
+    }catch(error){
+      console.error('admin QR asset open',error);
+      showQrOpenError('QRから備品を開けませんでした。通信状態を確認し、もう一度お試しください。');
+    }
   }
 
   function debounce(fn,ms){let t;return()=>{clearTimeout(t);t=setTimeout(fn,ms)}}
@@ -240,7 +271,7 @@
     const area=$('qrArea'), c=$('qrCanvas'), err=$('qrError');
     if(!area||!c)return;
     area.classList.remove('hidden');err.textContent='';
-    const url=new URL(location.origin+location.pathname);url.searchParams.set('asset',a.id);
+    const url=new URL(window.APP_BASE_URL||location.origin+location.pathname);url.pathname='/';url.searchParams.set('asset',a.id);
     try{
       if(!window.QRCode||typeof QRCode.toCanvas!=='function')throw new Error('QRライブラリを読み込めませんでした。ページを再読み込みしてください。');
       await QRCode.toCanvas(c,url.toString(),{width:240,margin:2,errorCorrectionLevel:'M'});
@@ -251,5 +282,12 @@
   async function loadAdmin(){const p=await db.from('profiles').select('id,name,email,role').eq('role','admin').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span><strong>${esc(x.name||'名称未設定')}</strong><small> ${esc(x.email||'')}</small></span><span class="badge use">管理者</span></div>`).join('');[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
   // Keep the dropdown current after edits to the dedicated user master.
   document.addEventListener('asset-user-master-updated',()=>{if(db)loadMasters().catch(e=>console.warn('master refresh',e));});
-  window.addEventListener('DOMContentLoaded',init);
+  window.addEventListener('DOMContentLoaded',()=>{
+    if(new URL(location.href).searchParams.has('asset')){
+      const note=document.createElement('p');
+      note.textContent='備品QRからのアクセスです。管理者ログイン後、該当する備品の詳細を開きます。';
+      $('loginForm').before(note);
+    }
+    init();
+  });
 })();
