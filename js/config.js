@@ -11,6 +11,10 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
     const canonical = new URL(window.APP_BASE_URL);
     if (location.hostname === canonical.hostname) return;
     if (!location.hostname.endsWith('.vercel.app')) return;
+    // Feature branches are served from Vercel preview subdomains. Do not
+    // redirect those previews to production: the admin QR flow must be tested.
+    // The QR payload itself still uses APP_BASE_URL (the permanent production URL).
+    if (location.hostname.startsWith('kdaido-kanri-auto-')) return;
 
     canonical.pathname = location.pathname;
     canonical.search = location.search;
