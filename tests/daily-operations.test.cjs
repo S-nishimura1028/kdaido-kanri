@@ -36,7 +36,7 @@ test('all-history pagination and soft-deleted filtering are present',()=>{
 
 test('search supports user masters and location with filtered active rows',async()=>{
   const app=file('js/app.js');
-  const start=app.indexOf('  async function loadAssets(){');
+  const start=app.indexOf('  let assetLoadSequence=0;');
   const end=app.indexOf('\n  function renderAssetsTable(',start);
   assert.ok(start>=0&&end>start);
   const seen={eq:[],pages:[],table:null};
