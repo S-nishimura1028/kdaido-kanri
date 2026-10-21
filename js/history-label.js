@@ -36,10 +36,19 @@
     running=true;
     try{
       const [historyResult,assetsResult,profilesResult]=await Promise.all([
-        c.from('asset_history')
-          .select('id,asset_id,asset_no_snapshot,asset_name_snapshot,action,note,user_name,actor_id,before_data,after_data,created_at')
-          .order('created_at',{ascending:false})
-          .limit(200),
+        (async()=>{
+          const rows=[];
+          for(let offset=0;;offset+=500){
+            const result=await c.from('asset_history')
+              .select('id,asset_id,asset_no_snapshot,asset_name_snapshot,action,note,user_name,actor_id,before_data,after_data,created_at')
+              .order('created_at',{ascending:false}).order('id')
+              .range(offset,offset+499);
+            if(result.error)return result;
+            rows.push(...(result.data||[]));
+            if((result.data||[]).length<500)break;
+          }
+          return {data:rows,error:null};
+        })(),
         c.from('assets').select('id,asset_no,name'),
         c.from('profiles').select('id,name,email')
       ]);
