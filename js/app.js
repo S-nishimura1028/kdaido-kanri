@@ -88,6 +88,41 @@
     }catch(err){console.error(err);showError(err.message||'ログインに失敗しました。');}
     finally{btn.disabled=false;btn.textContent='ログイン';}
   });
+  // One-time email login for existing users only. Admin authorization is
+  // still enforced by enterApp() and the Supabase table/storage RLS policies.
+  $('magicLinkBtn').addEventListener('click',async()=>{
+    const email=$('loginEmail').value.trim();
+    const button=$('magicLinkBtn');
+    const notice=$('magicLinkNotice');
+    showError('');
+    notice.textContent='';
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){
+      showError('登録済みメールアドレスを入力してください。');
+      $('loginEmail').focus();
+      return;
+    }
+    if(!db){
+      showError('接続準備中です。少し待ってから再度お試しください。');
+      return;
+    }
+    button.disabled=true;
+    button.textContent='メール送信中…';
+    try{
+      const redirectTo=window.location.href.split('#')[0];
+      const {error}=await db.auth.signInWithOtp({
+        email,
+        options:{shouldCreateUser:false,emailRedirectTo:redirectTo}
+      });
+      if(error)throw error;
+      notice.textContent='ログイン用メールを送信しました。届いたメールのリンクからアクセスしてください。リンクは一度だけ使用できます。';
+    }catch(err){
+      console.error('magic link request',err);
+      showError('メールを送れませんでした。'+(err.message||'少し時間をおいて再度お試しください。'));
+    }finally{
+      button.disabled=false;
+      button.textContent='メールで一時ログイン';
+    }
+  });
   $('logoutBtn').onclick=()=>db.auth.signOut();
   document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.page));
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
