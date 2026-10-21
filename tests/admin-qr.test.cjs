@@ -65,95 +65,92 @@ test('source files parse without syntax errors',()=>{
   }
 });
 
-test('email OTP login is available without weakening administrator requirements',()=>{
+
+test('login UI uses the existing free Magic Link template',()=>{
   const html=file('index.html');
   assert.match(html,/id="magicLinkBtn"/);
-  assert.match(html,/id="emailOtpInput"/);
-  assert.match(html,/id="verifyEmailOtpBtn"/);
-  assert.match(code,/auth\.signInWithOtp\(/);
+  assert.match(html,/id="magicLinkPasteInput"/);
+  assert.match(html,/id="verifyMagicLinkBtn"/);
+  assert.doesNotMatch(html,/id="emailOtpInput"/);
+  assert.match(code,/auth\.verifyOtp\(\{token_hash:tokenHash,type:'magiclink'\}\)/);
   assert.match(code,/shouldCreateUser:false/);
-  assert.match(code,/auth\.verifyOtp\(\{email:pendingOtpEmail,token,type:'email'\}\)/);
-  assert.doesNotMatch(code,/emailRedirectTo:redirectTo/);
   assert.match(code,/profile\.role!=='admin' \|\| profile\.is_active!==true/);
 });
-test('email address validation does not accidentally escape regex metacharacters',()=>{
+test('email address validation remains correct',()=>{
   assert.ok(code.includes(String.raw`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`));
 });
 
-
-function mockOtp(){
-  const elements={};
-  const calls=[];
+function mockMagicLink(){
+  const elements={},calls=[];
   function element(id){
-    if(!elements[id]){
-      elements[id]={
-        value:'',disabled:false,textContent:'',listeners:{},
-        classList:{remove(name){calls.push({kind:'show',id,name})}},
-        addEventListener(event,callback){this.listeners[event]=callback},
-        focus(){},
-      };
-    }
+    if(!elements[id])elements[id]={
+      value:'',disabled:false,textContent:'',listeners:{},
+      addEventListener(event,handler){this.listeners[event]=handler},
+      focus(){},
+    };
     return elements[id];
   }
-  let success=true,verifyError=null;
-  const context={
-    $:element,console:{error(){}},
-    showError(text){element('loginError').textContent=text},
+  let sendError=null,verificationError=null;
+  const sandbox={
+    $:element,URL,window:{SUPABASE_URL:'https://rhjnrguhnkfotggzxjfs.supabase.co'},
+    showError(msg){element('loginError').textContent=msg},
     db:{auth:{
-      async signInWithOtp(options){calls.push({kind:'send',options});return {error:success?null:{status:429,message:'rate limit exceeded'}}},
-      async verifyOtp(options){calls.push({kind:'verify',options});return {error:verifyError}}
+      async signInWithOtp(options){calls.push({action:'send',options});return{error:sendError}},
+      async verifyOtp(options){calls.push({action:'verify',options});return{error:verificationError}},
     }}
   };
-  const start=code.indexOf('  // An email OTP creates a normal Supabase session');
+  const start=code.indexOf('  // The default Supabase email template');
   const end=code.indexOf("  $('logoutBtn').onclick",start);
-  assert.ok(start>=0&&end>start,'OTP handler exists');
-  vm.runInNewContext(code.slice(start,end),context);
-  return {element,calls,failSend(){success=false},failVerify(){verifyError={message:'invalid token'}}};
+  assert.ok(start>=0&&end>start,'magic link handler exists');
+  vm.runInNewContext(code.slice(start,end),sandbox);
+  return {elements,calls,element,failSend(){sendError={status:429,message:'rate limit'}},failVerify(){verificationError={message:'invalid token'}}};
 }
-
-test('email OTP requests are limited to existing accounts and do not use redirects',async()=>{
-  const h=mockOtp();
+const safeToken='a'.repeat(64);
+const sampleLink='https://rhjnrguhnkfotggzxjfs.supabase.co/auth/v1/verify?token='+safeToken+'&type=magiclink&redirect_to=https%3A%2F%2Fexample.org';
+test('login mail can only be requested for an existing account',async()=>{
+  const h=mockMagicLink();
   h.element('loginEmail').value='nishimuradaido@gmail.com';
   await h.element('magicLinkBtn').listeners.click();
-  assert.equal(h.calls.filter(c=>c.kind==='send').length,1);
-  const request=h.calls.find(c=>c.kind==='send').options;
-  assert.equal(request.email,'nishimuradaido@gmail.com');
-  assert.equal(request.options.shouldCreateUser,false);
-  assert.equal(request.options.emailRedirectTo,undefined);
-  assert.ok(h.calls.some(c=>c.kind==='show'&&c.id==='emailOtpPanel'));
+  const req=h.calls.find(x=>x.action==='send');
+  assert.equal(req.options.email,'nishimuradaido@gmail.com');
+  assert.equal(req.options.options.shouldCreateUser,false);
+  assert.equal(req.options.options.emailRedirectTo,undefined);
 });
-
-test('six digit code is required before attempting a Supabase verification',async()=>{
-  const h=mockOtp();
-  h.element('loginEmail').value='nishimuradaido@gmail.com';
-  await h.element('magicLinkBtn').listeners.click();
-  h.element('emailOtpInput').value='abc123';
-  await h.element('verifyEmailOtpBtn').listeners.click();
-  assert.equal(h.calls.filter(c=>c.kind==='verify').length,0);
-  assert.match(h.element('loginError').textContent,/6桁/);
+test('valid Supabase Magic Link is verified locally in the same browser',async()=>{
+  const h=mockMagicLink();
+  h.element('magicLinkPasteInput').value=sampleLink;
+  await h.element('verifyMagicLinkBtn').listeners.click();
+  const req=h.calls.find(x=>x.action==='verify');
+  assert.equal(req.options.token_hash,safeToken);
+  assert.equal(req.options.type,'magiclink');
+  assert.equal(h.element('magicLinkPasteInput').value,'');
+  assert.match(h.element('magicLinkNotice').textContent,/認証に成功/);
 });
-
-test('OTP is verified in the current browser using an email-type code',async()=>{
-  const h=mockOtp();
-  h.element('loginEmail').value='nishimuradaido@gmail.com';
-  await h.element('magicLinkBtn').listeners.click();
-  h.element('emailOtpInput').value='123456';
-  await h.element('verifyEmailOtpBtn').listeners.click();
-  const requests=h.calls.filter(c=>c.kind==='verify');
-  assert.equal(requests.length,1);
-  assert.equal(requests[0].options.email,'nishimuradaido@gmail.com');
-  assert.equal(requests[0].options.token,'123456');
-  assert.equal(requests[0].options.type,'email');
-  assert.equal(h.element('emailOtpInput').value,'');
+test('malicious site URL never reaches auth verification',async()=>{
+  const h=mockMagicLink();
+  h.element('magicLinkPasteInput').value='https://evil.example/auth/v1/verify?token='+safeToken+'&type=magiclink';
+  await h.element('verifyMagicLinkBtn').listeners.click();
+  assert.equal(h.calls.filter(x=>x.action==='verify').length,0);
+  assert.match(h.element('loginError').textContent,/Supabaseから届いた/);
 });
-
-test('incorrect or expired codes never show an authentication success message',async()=>{
-  const h=mockOtp();
-  h.element('loginEmail').value='nishimuradaido@gmail.com';
-  await h.element('magicLinkBtn').listeners.click();
+test('invalid or missing token rejected locally',async()=>{
+  const h=mockMagicLink();
+  h.element('magicLinkPasteInput').value='https://rhjnrguhnkfotggzxjfs.supabase.co/auth/v1/verify?token=invalid&type=magiclink';
+  await h.element('verifyMagicLinkBtn').listeners.click();
+  assert.equal(h.calls.filter(x=>x.action==='verify').length,0);
+});
+test('expired or used token cannot produce a success message',async()=>{
+  const h=mockMagicLink();
   h.failVerify();
-  h.element('emailOtpInput').value='111111';
-  await h.element('verifyEmailOtpBtn').listeners.click();
-  assert.match(h.element('loginError').textContent,/認証できませんでした/);
-  assert.doesNotMatch(h.element('magicLinkNotice').textContent,/認証に成功しました/);
+  h.element('magicLinkPasteInput').value=sampleLink;
+  await h.element('verifyMagicLinkBtn').listeners.click();
+  assert.match(h.element('loginError').textContent,/無効または使用済み/);
+  assert.doesNotMatch(h.element('magicLinkNotice').textContent,/認証に成功/);
+});
+test('email send rate limits do not trigger hidden retry loops',async()=>{
+  const h=mockMagicLink();h.failSend();
+  h.element('loginEmail').value='nishimuradaido@gmail.com';
+  await h.element('magicLinkBtn').listeners.click();
+  assert.equal(h.calls.filter(x=>x.action==='send').length,1);
+  assert.match(h.element('loginError').textContent,/回数制限/);
 });
