@@ -13,4 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run admin QR tests
-        run: node --test tests/admin-qr.test.cjs
+        run: node --test tests/*.test.cjs
