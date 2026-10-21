@@ -25,20 +25,15 @@
   }
 
   async function resolveAssetId(){
+    // The visible detail dialog always wins over a stale ?asset= URL.
+    const shownId=document.getElementById('detailDialog')?.dataset.assetId;
+    if(shownId)return shownId;
+    if(currentAssetId)return currentAssetId;
     try{
       const fromUrl=new URL(location.href).searchParams.get('asset');
       if(fromUrl)return fromUrl;
     }catch(_e){}
-
-    if(currentAssetId)return currentAssetId;
-
-    const assetNo=detailValue('管理No.');
-    if(!assetNo)return null;
-    const c=db();
-    if(!c)return null;
-    const {data,error}=await c.from('assets').select('id').eq('asset_no',assetNo).eq('is_deleted',false).maybeSingle();
-    if(error)throw error;
-    return data?.id||null;
+    throw new Error('削除対象の備品を特定できません。備品を開き直してください。');
   }
 
   async function deleteAsset(button){
