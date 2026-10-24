@@ -33,6 +33,7 @@ function renderCards(){
  if(!table){host.innerHTML='<div class="workspace-list-empty">該当する備品はありません。</div>';if($('workspaceAssetCount'))$('workspaceAssetCount').textContent='検索結果 0件';return}
  var headings=[...table.querySelectorAll('thead th')].map(x=>x.textContent.trim());
  var rows=[...table.querySelectorAll('tbody tr[data-id]')];
+ rows.forEach(row=>[...row.querySelectorAll('td')].forEach((td,i)=>{td.dataset.label=headings[i]||''}));
  var cell=(row,name)=>{var i=headings.indexOf(name);return i<0?'':row.querySelectorAll('td')[i]?.textContent.trim()||''};
  if($('workspaceAssetCount'))$('workspaceAssetCount').textContent='検索結果 '+rows.length.toLocaleString('ja-JP')+'件';
  host.innerHTML=rows.map(row=>{
@@ -41,7 +42,7 @@ function renderCards(){
   var source=row.querySelector('.qr-row-check');
   var checkbox=source?'<label class="workspace-card-check"><input type="checkbox" data-id="'+id+'" '+(source.checked?'checked':'')+'>印刷対象</label>':'';
   var edit=row.querySelector('.edit-asset')?'<button type="button" class="workspace-edit" data-workspace-action="edit">編集</button>':'';
-  return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-number">'+esc(no)+'</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><h3>'+esc(name)+'</h3><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div><div><dt>分類</dt><dd>'+esc(category||'—')+'</dd></div><div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail">詳細を見る</button>'+edit+checkbox+'</div></article>';
+  return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-number">'+esc(no)+'</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><h3>'+esc(name)+'</h3><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div>'+(category&&category!=='その他'?'<div><dt>分類</dt><dd>'+esc(category)+'</dd></div>':'')+'<div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail">詳細を見る</button>'+edit+checkbox+'</div></article>';
  }).join('')||'<div class="workspace-list-empty">該当する備品はありません。</div>';
  updateChips();
 }
