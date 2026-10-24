@@ -106,3 +106,25 @@
   .workspace-dashboard-shortcuts small{font-size:11px;margin-top:4px}
 }
 @media(max-width:600px){#workspaceAdminTabs{gap:2px;overflow-x:auto;white-space:nowrap}#workspaceAdminTabs button{padding:9px 10px;font-size:12px;white-space:nowrap;flex:0 0 auto}}
+
+/* History is available in 管理 > 変更履歴; retain hidden legacy page as the source. */
+.sidebar nav>.nav-btn[data-page="history"]{display:none!important}
+@media(max-width:800px){
+ .sidebar nav{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #recentAssets.table-wrap{padding:0;margin:0;overflow:visible}
+ #recentAssets.table-wrap:after{display:none}
+ #recentAssets table{display:block;min-width:0!important;width:100%}
+ #recentAssets thead{display:none}
+ #recentAssets tbody{display:grid;grid-template-columns:1fr;gap:10px}
+ #recentAssets tr{display:block;background:#fdfefd;border:1px solid #dbe8e3;border-radius:12px;padding:11px 13px;box-shadow:0 2px 9px rgba(10,68,75,.025)}
+ #recentAssets td{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;border:0!important;padding:6px 0;font-size:12px;text-align:right;overflow-wrap:anywhere}
+ #recentAssets td:before{color:#6c857b;font-size:11px;font-weight:700;text-align:left;flex:0 0 auto}
+ #recentAssets td:nth-child(1):before{content:"管理No."}
+ #recentAssets td:nth-child(2):before{content:"名称"}
+ #recentAssets td:nth-child(3):before{content:"分類"}
+ #recentAssets td:nth-child(4):before{content:"保管場所"}
+ #recentAssets td:nth-child(5):before{content:"数量"}
+ #recentAssets td:nth-child(6):before{content:"状態"}
+ #recentAssets td:nth-child(2){font-weight:800;color:#183f55;font-size:14px}
+ #recentAssets td:nth-child(1){font-weight:850;color:#075b9b}
+}
