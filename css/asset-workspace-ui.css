@@ -82,3 +82,27 @@
  #qrBatchPrintBar>div:first-child{font-size:11px!important}
  #qrBatchPrintBar button{min-height:42px!important;padding:0 12px!important}
 }
+
+/* Dashboard entry points; preserve corporate gradients. */
+.workspace-dashboard-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 19px}
+.workspace-dashboard-shortcuts button{border:1px solid #d5e9df;border-radius:15px;padding:17px 16px;text-align:left;background:linear-gradient(125deg,#fff,#f3faf6);color:#125075;min-width:0;box-shadow:0 4px 16px rgba(7,59,103,.045);transition:transform .15s,box-shadow .15s}
+.workspace-dashboard-shortcuts button:hover{transform:translateY(-2px);box-shadow:0 9px 23px rgba(7,59,103,.11)}
+.workspace-dashboard-shortcuts strong{display:block;font-size:15px;font-weight:850;line-height:1.45}
+.workspace-dashboard-shortcuts small{display:block;font-size:12px;color:#698278;margin-top:7px;line-height:1.5}
+.workspace-history-link{display:inline-block;background:none;border:none;padding:3px 0;text-align:left;color:#075b9b;font:inherit;font-weight:800;text-decoration:underline;text-decoration-color:#a6c6d5;text-underline-offset:3px}
+.workspace-history-link:hover{color:#1488c9}
+.workspace-history-pane tr td:last-child{max-width:430px;overflow-wrap:anywhere}
+.workspace-detail-tabs{border-bottom:1px solid #dbe8e3;margin:10px 0 15px;gap:4px}
+.workspace-detail-tabs button{font-size:13px;flex:1;padding:10px}
+.workspace-detail-event{border-bottom:1px solid #e6eee9;padding:12px 8px;font-size:13px;color:#355850;line-height:1.6;overflow-wrap:anywhere}
+.workspace-detail-event small{display:block;font-size:11px;color:#68877d;font-weight:700;margin-bottom:3px}
+#workspaceDetailHistory{max-height:380px;overflow:auto}
+#workspaceAdminTabs{scrollbar-width:thin}
+#workspaceAdminHistory .workspace-history-tools input:focus{box-shadow:0 0 0 3px rgba(20,136,201,.1)}
+@media(max-width:800px){
+  .workspace-dashboard-shortcuts{grid-template-columns:1fr;gap:9px}
+  .workspace-dashboard-shortcuts button{padding:13px 15px}
+  .workspace-dashboard-shortcuts strong{font-size:14px}
+  .workspace-dashboard-shortcuts small{font-size:11px;margin-top:4px}
+}
+@media(max-width:600px){#workspaceAdminTabs{gap:2px;overflow-x:auto;white-space:nowrap}#workspaceAdminTabs button{padding:9px 10px;font-size:12px;white-space:nowrap;flex:0 0 auto}}
