@@ -7,6 +7,27 @@ var statusIds={'':'statTotal','未使用':'statAvailable','使用中':'statUse',
 var view='table', cardFrame=0, adminTab='analysis', historySearch='', historyType='', historyLimit=80;
 var assetMap=new Map(), lookupDone=false;
 try{view=localStorage.getItem('daido:asset-view')|| (matchMedia('(max-width:800px)').matches?'cards':'table')}catch(_){view='cards'}
+
+function assetGlyph(name){
+ var n=String(name||'');
+ var path;
+ if(/自転車|サイクル|バイク/.test(n))path='<circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="m5 17 5-10 5 10H5m5-10h3m2 10 4-9h-4"/>';
+ else if(/洗濯/.test(n))path='<rect x="3" y="2.5" width="18" height="19" rx="2.5"/><circle cx="12" cy="13.5" r="5"/><path d="M3 7.5h18M7 5h.01M10 5h.01"/>';
+ else if(/冷蔵|冷凍/.test(n))path='<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M6 10h12M9 6v2M9 13v3"/>';
+ else if(/炊飯|ポット|電気釜/.test(n))path='<path d="M5 10h14l-1 10H6L5 10ZM7 10V8a5 5 0 0 1 10 0v2M9 6h6M10 15h4"/>';
+ else if(/電子レンジ|レンジ/.test(n))path='<rect x="2" y="5" width="20" height="15" rx="2"/><rect x="5" y="8" width="11" height="9" rx="1"/><path d="M19 9h.01M19 13h.01M5 20h14"/>';
+ else if(/テレビ|モニター|画面/.test(n))path='<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>';
+ else if(/机|テーブル/.test(n))path='<path d="M3 7h18v4H3zM6 11v10m12-10v10"/>';
+ else if(/椅子|チェア/.test(n))path='<path d="M6 3h12v11H6zM6 14v3h12v-3M8 17v4m8-4v4"/>';
+ else path='<path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/>';
+ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>';
+}
+function updateClearControl(){
+ var b=$('workspaceResetFilters');if(!b)return;
+ var on=Boolean($('assetSearch')?.value.trim()||$('assetStatus')?.value||$('assetCategory')?.value);
+ b.classList.toggle('hidden',!on);
+}
+
 function pickStatus(value){
  var select=$('assetStatus');if(!select)return;
  select.value=value; select.dispatchEvent(new Event('change',{bubbles:true}));updateChips();
@@ -42,9 +63,9 @@ function renderCards(){
   var source=row.querySelector('.qr-row-check');
   var checkbox=source?'<label class="workspace-card-check"><input type="checkbox" data-id="'+id+'" '+(source.checked?'checked':'')+'>印刷対象</label>':'';
   var edit=row.querySelector('.edit-asset')?'<button type="button" class="workspace-edit" data-workspace-action="edit">編集</button>':'';
-  return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-number">'+esc(no)+'</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><h3>'+esc(name)+'</h3><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div>'+(category&&category!=='その他'?'<div><dt>分類</dt><dd>'+esc(category)+'</dd></div>':'')+'<div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail">詳細を見る</button>'+edit+checkbox+'</div></article>';
+  return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-kicker">備品 / ASSET</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><div class="workspace-card-identity"><span class="workspace-card-symbol">'+assetGlyph(name)+'</span><div class="workspace-card-identity-text"><span class="workspace-card-number">'+esc(no)+'</span><h3>'+esc(name)+'</h3></div></div><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div>'+(category&&category!=='その他'?'<div><dt>分類</dt><dd>'+esc(category)+'</dd></div>':'')+'<div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail">詳細を見る</button>'+edit+checkbox+'</div></article>';
  }).join('')||'<div class="workspace-list-empty">該当する備品はありません。</div>';
- updateChips();
+ updateChips();updateClearControl();
 }
 function initAssets(){
  var page=$('assetsPage'),toolbar=page?.querySelector('.toolbar'),table=$('assetTable');
@@ -54,9 +75,17 @@ function initAssets(){
  toolbar.insertAdjacentElement('afterend',chips);
  chips.addEventListener('click',ev=>{var b=ev.target.closest('[data-state]');if(b)pickStatus(b.dataset.state||'')});
  var head=document.createElement('div');head.id='assetWorkspaceHead';head.className='workspace-asset-head';
- head.innerHTML='<div><strong id="workspaceAssetCount">備品を読み込み中…</strong><p>名称・状態・場所をすばやく確認</p></div><div class="workspace-list-switch" role="group" aria-label="表示形式"><button type="button" class="workspace-view-btn" data-view="cards" aria-pressed="false">▦ カード</button><button type="button" class="workspace-view-btn" data-view="table" aria-pressed="false">☷ 一覧表</button></div>';
+ head.innerHTML='<div><strong id="workspaceAssetCount">備品を読み込み中…</strong><p>名称・状態・場所をすばやく確認 <button type="button" id="workspaceResetFilters" class="workspace-clear-filters hidden">条件をクリア</button></p></div><div class="workspace-list-switch" role="group" aria-label="表示形式"><button type="button" class="workspace-view-btn" data-view="cards" aria-pressed="false">▦ カード</button><button type="button" class="workspace-view-btn" data-view="table" aria-pressed="false">☷ 一覧表</button></div>';
  table.insertAdjacentElement('beforebegin',head);
- head.addEventListener('click',ev=>{var b=ev.target.closest('[data-view]');if(b)setView(b.dataset.view)});
+ head.addEventListener('click',ev=>{
+  var reset=ev.target.closest('#workspaceResetFilters');
+  if(reset){
+   $('assetSearch').value='';$('assetCategory').value='';
+   pickStatus('');$('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
+   updateClearControl();return;
+  }
+  var b=ev.target.closest('[data-view]');if(b)setView(b.dataset.view);
+ });
  var grid=document.createElement('div');grid.id='assetCardGrid';grid.className='workspace-asset-grid';grid.setAttribute('aria-label','備品カード一覧');
  table.insertAdjacentElement('afterend',grid);
  grid.addEventListener('click',ev=>{
@@ -74,8 +103,10 @@ function initAssets(){
   orig.checked=cb.checked;orig.dispatchEvent(new Event('change',{bubbles:true}));
  });
  new MutationObserver(queueCards).observe(table,{childList:true,subtree:true});
- $('assetStatus')?.addEventListener('change',updateChips);
- setView(view);updateChips();queueCards();
+ $('assetStatus')?.addEventListener('change',()=>{updateChips();updateClearControl()});
+ $('assetCategory')?.addEventListener('change',updateClearControl);
+ $('assetSearch')?.addEventListener('input',updateClearControl);
+ setView(view);updateChips();updateClearControl();queueCards();
 }
 function initShortcuts(){
  var p=$('dashboardPage');if(!p||$('workspaceDashboardShortcuts'))return;
