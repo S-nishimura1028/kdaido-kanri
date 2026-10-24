@@ -154,6 +154,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 }
 </style>
   <link rel="stylesheet" href="css/asset-workspace-ui.css?v=20261025-2">
+  <link rel="stylesheet" href="css/ui-refinement-20261025.css?v=20261025-1">
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -210,7 +211,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
       <section id="assetsPage" class="page hidden">
         <div class="toolbar">
-          <input id="assetSearch" placeholder="備品番号・備品名・メーカー・型番で検索">
+          <input id="assetSearch" type="search" aria-label="備品を検索" autocomplete="off" placeholder="管理No.・備品名・保管場所などで検索">
           <select id="assetStatus"><option value="">すべての状態</option><option>未使用</option><option>使用中</option><option>修理中</option><option>廃棄</option></select>
           <select id="assetCategory"><option value="">すべてのカテゴリ</option></select>
           <button id="newAssetBtn" class="primary admin-only hidden">＋ 備品登録</button>
@@ -300,6 +301,6 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
   <!-- auto deploy test -->
 <script src="js/admin-analysis.js?v=20261001-1"></script>\n<script src="js/qr-print.js?v=20261022-2"></script>
 <script src="js/photo-update.js?v=20261022-ops-2"></script>
-  <script src="js/asset-workspace-ui.js?v=20261025-2"></script>
+  <script src="js/asset-workspace-ui.js?v=20261025-3"></script>
 </body>
 </html>
