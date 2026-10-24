@@ -274,3 +274,14 @@ dialog::backdrop{background:rgba(7,33,49,.56)}
  #workspaceDetailTabs .workspace-tab{flex:1;padding:10px 6px;font-size:12px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;scroll-behavior:auto!important}}
+
+.workspace-clear-filters{background:none;border:0;color:#0c669a;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:2px 5px;min-height:24px;margin-left:6px;border-radius:5px}
+.workspace-clear-filters:hover{color:#064466;background:#eaf5f7}
+#assetsPage>.toolbar #assetSearch::-webkit-search-cancel-button{cursor:pointer}
+#assetTable .edit-asset{border-radius:9px;padding:8px 13px;min-height:36px}
+#adminAnalysisPanel .analysis-summary .analysis-card{min-width:0}
+@media(max-width:800px){
+ .workspace-clear-filters{display:inline-block;font-size:11px;margin-left:2px}
+ #assetTable{margin:0;border-radius:13px}
+ #qrBatchPrintBar{align-items:center;gap:9px!important}
+}
