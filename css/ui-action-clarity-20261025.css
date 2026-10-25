@@ -76,3 +76,9 @@ button{overflow-wrap:normal}
 @media(max-width:420px){
  #qrBatchPrintBar #qrSelectAllBtn{width:100%;flex-basis:100%}
 }
+
+/* Stage 2 form safeguards: guidance must remain legible on desktop and mobile. */
+#assetForm #assetStatusHint{display:block;font-size:11px;line-height:1.55;color:#567e87;font-weight:550;margin-top:5px}
+#assetForm #assetStatusHint.workspace-field-warning{color:#a85239;background:#fff6ee;border:1px solid #f0d8be;padding:8px 9px;border-radius:8px;font-weight:750}
+#assetForm #assetFormError:not(:empty){padding:10px 12px;background:#fff5f1;border:1px solid #ebcabe;border-radius:9px;font-size:13px;line-height:1.6;margin-top:12px}
+#assetForm select#currentUserId,#assetForm select#statusForm{min-height:46px}
