@@ -67,3 +67,16 @@
  .exit-ongoing{padding:2px 0}
 }
 @media(prefers-reduced-motion:reduce){.exit-session-link,.exit-item-form button{transition:none!important}}
+
+/* Persisted missing-equipment follow-up after a user's account is closed. */
+.exit-unrecovered{margin-top:22px}
+.exit-unrecovered h4{font-size:15px;font-weight:850;color:#874d25;margin:0 0 10px}
+.exit-unrecovered h4 span{background:#fff0e1;padding:4px 9px;font-size:11px;border-radius:999px}
+.exit-unrecovered-list{display:grid;gap:10px}
+.exit-unrecovered-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:#fffbf6;border:1px solid #edd8ba;border-radius:11px;padding:13px}
+.exit-unrecovered-row>div{min-width:0;flex:1 1 230px}
+.exit-unrecovered-row strong{display:block;font-size:13px;color:#835329;overflow-wrap:anywhere}
+.exit-unrecovered-row small{font-size:11px;display:block;color:#956d42;margin-top:5px}
+.exit-unrecovered-row p{font-size:12px;color:#785e43;margin:8px 0 0;line-height:1.6;overflow-wrap:anywhere}
+.exit-unrecovered-row button{min-height:41px;padding:8px 13px;font-size:12px}
+@media(max-width:600px){.exit-unrecovered-row button{width:100%}}
