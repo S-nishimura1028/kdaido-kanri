@@ -69,10 +69,12 @@
         throw new Error('このアプリとQR備品情報は管理者アカウント専用です。');
       }
       $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+      $('connectionStatus').textContent='データ同期中…';
       $('userInfo').textContent=`${profile?.name||user.email} / ${roleLabel(profile?.role)}`;
       document.querySelectorAll('.admin-only').forEach(e=>e.classList.toggle('hidden',!isManager()));
-      $('connectionStatus').textContent='Supabase接続OK';
+      $('connectionStatus').textContent='データ同期中…';
       await loadMasters(); await loadDashboard(); await loadAssets(); await loadHistory();
+      $('connectionStatus').textContent='Supabase接続OK';
     }catch(e){console.error(e);showLogin();showError('ログイン後のデータ取得に失敗しました。 '+(e.message||''));}
   }
 
@@ -90,22 +92,68 @@
   });
   $('logoutBtn').onclick=()=>db.auth.signOut();
   $('mobileLogoutBtn').onclick=()=>db.auth.signOut();
-  document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.page));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=async()=>{
+    const page=b.dataset.page;
+    go(page);
+    if(!db||!profile||profile.role!=='admin')return;
+    // A manager may have changed equipment since the last visit.
+    try{
+      $('connectionStatus').textContent='最新情報を確認中…';
+      if(page==='dashboard')await loadDashboard();
+      else if(page==='assets')await loadAssets();
+      else if(page==='history')await loadHistory();
+      $('connectionStatus').textContent='Supabase接続OK';
+    }catch(error){
+      console.error('画面の再読込エラー',error);
+      $('connectionStatus').textContent='再読込失敗';
+      const holder=page==='assets'?'assetTable':page==='history'?'historyTable':null;
+      if(holder&&$(holder))$(holder).textContent='データを更新できません。通信状態を確認して、もう一度この画面を開いてください。';
+    }
+  });
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
   $('mobileMenu').onclick=()=>document.querySelector('.sidebar').classList.toggle('open');
-  function go(page){const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理・履歴'};document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));$(page+'Page').classList.remove('hidden');$('pageTitle').textContent=titles[page];document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='admin'&&isManager())loadAdmin();}
+  function go(page){
+    const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理・履歴'};
+    if(!titles[page]||!$(page+'Page'))return;
+    document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+    $(page+'Page').classList.remove('hidden');
+    $('pageTitle').textContent=titles[page];
+    document.querySelectorAll('.nav-btn').forEach(b=>{
+      const active=b.dataset.page===page;
+      b.classList.toggle('active',active);
+      if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+    });
+    if(page==='admin'&&isManager())loadAdmin();
+    document.querySelector('.main')?.scrollTo?.({top:0,behavior:'instant'});
+    window.scrollTo({top:0,behavior:'instant'});
+  }
   // Dashboard actions navigate directly, rather than simulating a click on
   // another (sometimes hidden) menu button. One handler owns all three cards.
+  function openAssetStatus(status){
+    window.DaidoAnalysisFilter=null;
+    $('assetSearch').value='';
+    $('assetCategory').value='';
+    $('assetStatus').value=status;
+    go('assets');
+    $('assetStatus').dispatchEvent(new Event('change',{bubbles:true}));
+    $('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
+  }
+  // The five dashboard KPIs are shortcuts to their corresponding lists.
+  document.getElementById('dashboardPage')?.addEventListener('click',event=>{
+    const card=event.target.closest('[data-dashboard-status]');
+    if(card&&isManager())openAssetStatus(card.dataset.dashboardStatus);
+  });
+  document.getElementById('dashboardPage')?.addEventListener('keydown',event=>{
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    const card=event.target.closest('[data-dashboard-status]');
+    if(!card||!isManager())return;
+    event.preventDefault();
+    openAssetStatus(card.dataset.dashboardStatus);
+  });
   function runDashboardShortcut(action){
     if(!isManager())return;
     if(action==='available'){
-      window.DaidoAnalysisFilter=null;
-      $('assetSearch').value='';
-      $('assetCategory').value='';
-      $('assetStatus').value='未使用';
-      go('assets');
-      $('assetStatus').dispatchEvent(new Event('change',{bubbles:true}));
-      $('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
+      openAssetStatus('未使用');
     }else if(action==='analysis'){
       go('admin');
       document.querySelector('#workspaceAdminTabs [data-admin-tab="analysis"]')?.click();
