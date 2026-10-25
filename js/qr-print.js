@@ -150,7 +150,24 @@
     btn.textContent='QRシールを一括印刷';
     btn.addEventListener('click',printSelectedAssets);
 
-    bar.append(note,btn);
+    const selectBtn=document.createElement('button');
+    selectBtn.type='button';
+    selectBtn.id='qrSelectAllBtn';
+    selectBtn.className='secondary';
+    selectBtn.textContent='表示中をすべて選択';
+    selectBtn.title='現在の検索結果にある備品をまとめて印刷対象にします';
+    selectBtn.addEventListener('click',()=>{
+      const table=document.querySelector('#assetTable table');
+      const head=table?.querySelector('.qr-select-head input');
+      if(!head)return;
+      const checkboxes=[...table.querySelectorAll('.qr-row-check')];
+      if(!checkboxes.length)return;
+      head.checked=!checkboxes.every(c=>c.checked);
+      // Preserve the existing QR printer selection logic and notify the
+      // card workspace through the same native change event.
+      head.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+    bar.append(note,selectBtn,btn);
     parent.insertBefore(bar,host);
   }
 
@@ -165,6 +182,14 @@
     if(btn.textContent!==label)btn.textContent=label;
     if(btn.disabled!==(n===0))btn.disabled=n===0;
     if(btn.title!==hint)btn.title=hint;
+    const selectBtn=document.getElementById('qrSelectAllBtn');
+    if(selectBtn){
+      const checks=[...document.querySelectorAll('#assetTable .qr-row-check')];
+      const allSelected=checks.length>0&&checks.every(c=>c.checked);
+      const selectLabel=allSelected?'選択を解除':'表示中をすべて選択';
+      if(selectBtn.textContent!==selectLabel)selectBtn.textContent=selectLabel;
+      if(selectBtn.disabled===(checks.length>0))selectBtn.disabled=checks.length===0;
+    }
   }
 
   function chooseStartPosition(){
