@@ -124,8 +124,8 @@
       if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });
     if(page==='admin'&&isManager())loadAdmin();
-    document.querySelector('.main')?.scrollTo?.({top:0,behavior:'instant'});
-    window.scrollTo({top:0,behavior:'instant'});
+    document.querySelector('.main')?.scrollTo?.({top:0,behavior:'auto'});
+    window.scrollTo({top:0,behavior:'auto'});
   }
   // Dashboard actions navigate directly, rather than simulating a click on
   // another (sometimes hidden) menu button. One handler owns all three cards.
@@ -526,10 +526,41 @@
       area.scrollIntoView({behavior:'smooth',block:'nearest'});
     }catch(e){console.error(e);err.textContent=e.message||'QRコードを表示できませんでした。';}
   }
-  async function loadHistory(){const rows=[];for(let offset=0;;offset+=500){
-    const r=await db.from('asset_history').select('*').order('created_at',{ascending:false}).range(offset,offset+499);
-    if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<500)break;
-  }$('historyTable').innerHTML=rows.length?`<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${new Date(h.created_at||Date.now()).toLocaleString('ja-JP')}</td><td>${esc(h.asset_id||'-')}</td><td>${esc(h.action||h.event_type||'-')}</td><td>${esc(h.note||h.description||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">履歴はありません。</div>';}
+  async function loadHistory(){
+    const rows=[];
+    for(let offset=0;;offset+=500){
+      const res=await db.from('asset_history').select(
+        'asset_id,asset_no_snapshot,asset_name_snapshot,action,user_name,note,created_at,before_status,after_status'
+      ).order('created_at',{ascending:false}).range(offset,offset+499);
+      if(res.error)throw res.error;
+      rows.push(...(res.data||[]));
+      if((res.data||[]).length<500)break;
+    }
+    const target=$('historyTable');
+    if(!rows.length){
+      target.innerHTML='<div class="empty">履歴はありません。</div>';
+      return;
+    }
+    target.innerHTML='<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容・担当</th></tr></thead><tbody>'+
+      rows.map(h=>{
+        const number=h.asset_no_snapshot||'番号未記録';
+        const name=h.asset_name_snapshot||'備品名未記録';
+        const time=h.created_at?new Date(h.created_at).toLocaleString('ja-JP'):'日時未記録';
+        const detail=h.note||(
+          h.before_status!==h.after_status && h.before_status && h.after_status?
+          h.before_status+' → '+h.after_status:'変更履歴'
+        );
+        const who=h.user_name?' <small class="workspace-history-actor">操作担当：'+esc(h.user_name)+'</small>':'';
+        return '<tr data-asset-id="'+esc(h.asset_id||'')+
+          '" data-asset-no="'+esc(h.asset_no_snapshot||'')+
+          '" data-asset-name="'+esc(h.asset_name_snapshot||'')+
+          '"><td data-label="日時">'+esc(time)+'</td>'+
+          '<td data-label="備品"><strong class="workspace-history-name">'+esc(number)+
+          '</strong><small class="workspace-history-asset">'+esc(name)+'</small></td>'+
+          '<td data-label="操作">'+esc(h.action||'-')+'</td>'+
+          '<td data-label="内容">'+esc(detail)+who+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
   async function loadAdmin(){const p=await db.from('profiles').select('id,name,email,role').eq('role','admin').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span><strong>${esc(x.name||'名称未設定')}</strong><small> ${esc(x.email||'')}</small></span><span class="badge use">管理者</span></div>`).join('');[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
   // Narrow bridge for QR operations: reuse the authenticated client and the
   // existing render/refresh path instead of maintaining a competing cache.
