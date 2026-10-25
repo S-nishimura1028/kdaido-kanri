@@ -1,0 +1,68 @@
+/* Clear action labels and accessible touch targets / 2026-10-25 */
+:root {--action-border:#d5e3e6;--action-ink:#254e65;--action-warning:#a14c40}
+button{overflow-wrap:normal}
+#dashboardPage button,#assetsPage button,#adminPage button,#assetDialog button,#detailDialog button{font-weight:750}
+#newAssetBtn,#saveAssetBtn,#qrPrintBtn,#qrBatchPrintBtn,#employeePhotoUpdateBtn,#employeePhotoSave{white-space:normal;text-align:center;line-height:1.3}
+#newAssetBtn,#saveAssetBtn,#qrPrintBtn,#employeePhotoSave{min-height:44px}
+#qrPrintBtn{max-width:100%;padding:11px 16px}
+#qrBatchPrintBar{flex-wrap:wrap}
+#qrBatchPrintBar #qrBatchPrintBtn{min-width:180px;min-height:44px;padding:10px 16px!important;line-height:1.4}
+#qrBatchPrintBar #qrBatchPrintBtn:disabled{opacity:.48;filter:grayscale(.12);box-shadow:none!important;cursor:not-allowed}
+#qrBatchPrintBar>div:first-child{line-height:1.45;flex:1 1 230px}
+#assetWorkspaceHead .workspace-clear-filters{font-size:12px;white-space:nowrap;font-weight:800;min-height:29px}
+#assetsPage>.toolbar select:focus-visible,#assetsPage>.toolbar input:focus-visible{outline:2px solid #3e9bc4;outline-offset:2px}
+.workspace-card-actions{align-items:stretch;gap:8px}
+.workspace-card-actions .workspace-detail,.workspace-card-actions .workspace-edit{min-height:44px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;flex:1 1 95px;line-height:1.35;padding:10px 12px}
+.workspace-card-actions .workspace-edit{flex:0 1 auto;min-width:93px}
+.workspace-card-actions .workspace-card-check{width:100%;display:inline-flex;align-items:center;justify-content:flex-start;gap:9px;min-height:35px;padding:5px 2px;margin:0;font-size:12px;line-height:1.5;color:#4c6874;cursor:pointer}
+.workspace-card-check input,.qr-row-check,.qr-select-head input{accent-color:#106b9d;width:21px!important;height:21px!important;min-height:21px!important;flex:0 0 21px}
+.workspace-card-check input:focus-visible{outline:3px solid #3f9cc9;outline-offset:2px}
+#assetTable tbody tr[data-id]:focus-visible{outline:3px solid #1488c9;outline-offset:-4px;background:#f0f8fa}
+#assetTable tbody td[data-label="操作"]{white-space:nowrap}
+#assetTable tbody td[data-label="操作"] button{min-height:38px;font-size:12px;font-weight:800}
+#assetTable th .qr-select-head,#assetTable .qr-select-cell{text-align:center}
+#workspaceAdminTabs .workspace-tab{line-height:1.45;min-height:45px}
+#workspaceDetailTabs .workspace-tab{line-height:1.45}
+#adminPage .master-row{gap:14px;align-items:center;flex-wrap:wrap}
+#adminPage .master-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;max-width:100%}
+#adminPage .master-actions .master-mini,#adminPage .master-actions button{min-height:39px;border:1px solid #d1e1e5;border-radius:9px;padding:8px 12px;background:#f8fbfc;color:#285a75;font-size:12px;font-weight:800;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
+#adminPage .master-actions .master-mini:hover,#adminPage .master-actions button:hover{background:#edf6fa;border-color:#a9c9d5;color:#0a587c}
+#adminPage .master-actions .master-mini.danger{background:#fffafa!important;border:1px solid #e9cecb!important;color:#9e443a!important}
+#adminPage .master-actions .master-mini.danger:hover{background:#fff0ef!important;border-color:#cf9d96!important}
+#adminPage .master-actions .master-mini.promote{color:#0d679e!important;background:#eef7fc!important}
+#adminPage .master-add,#addAssetUserBtn,#addAdminAccountBtn{min-height:44px;line-height:1.4;text-align:center}
+#adminPage .user-master-row{align-items:center}
+#adminPage .user-master-count{font-size:12px;line-height:1.6}
+#adminPage .user-master-info,#adminPage .admin-account-note{font-size:12px;line-height:1.7}
+#adminPage .admin-account-meta{font-size:11px}
+#adminPage .user-master-actions-cell .master-actions{justify-content:flex-start}
+#adminPage .user-master-count{margin-bottom:13px}
+#workspaceAdminHistory #workspaceHistoryMore{min-height:44px;line-height:1.35;border:1px solid var(--action-border)}
+#workspaceAdminHistory .workspace-history-link{min-height:30px;text-align:left;padding:4px 1px;font-size:12px;white-space:normal;overflow-wrap:anywhere}
+#assetForm .dialog-actions{gap:10px;flex-wrap:wrap}
+#assetForm .dialog-actions #saveAssetBtn{min-width:125px}
+#assetForm .dialog-actions .secondary{min-width:99px}
+#assetDialog .dialog-head .close,#detailDialog .dialog-head .close,#employeePhotoDialog .close{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+#detailDialog #detailEditBtn,#detailDialog #qrBtn,#detailDialog #employeePhotoUpdateBtn{min-height:45px!important;white-space:normal;line-height:1.4;padding:10px 13px;font-size:13px}
+#detailDialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
+#detailDialog .dialog-actions button{flex:1 1 135px}
+#workspaceDetailTabs{overflow-x:auto;scrollbar-width:thin}
+@media(max-width:800px){
+ .sidebar .nav-btn[data-page="admin"]{font-size:10.5px!important}
+ #assetsPage>.toolbar #newAssetBtn{white-space:nowrap;padding:9px 13px;font-size:12px}
+ #qrBatchPrintBar{padding:11px!important}
+ #qrBatchPrintBar #qrBatchPrintBtn{flex:0 1 auto;min-width:0;font-size:12px}
+ #adminPage .master-actions{justify-content:flex-start}
+ #adminPage .user-master-actions-cell .master-actions{justify-content:flex-start}
+ #workspaceAdminTabs .workspace-tab{min-height:44px}
+ .workspace-card-actions .workspace-detail,.workspace-card-actions .workspace-edit{min-height:46px}
+}
+@media(max-width:420px){
+ #qrBatchPrintBar #qrBatchPrintBtn{width:100%;min-height:44px}
+ #qrBatchPrintBar>div:first-child{flex-basis:100%}
+ .workspace-card-actions .workspace-edit{flex:1 1 100px}
+ #assetForm .dialog-actions button{min-height:47px;font-size:13px}
+ #workspaceAdminHistory .workspace-history-tools{grid-template-columns:minmax(0,1fr) 125px}
+ #adminPage .master-actions .master-mini{min-height:43px;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){.workspace-card-actions button,#adminPage .master-actions button{transition:none!important}}
