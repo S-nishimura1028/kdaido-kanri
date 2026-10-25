@@ -94,6 +94,40 @@
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
   $('mobileMenu').onclick=()=>document.querySelector('.sidebar').classList.toggle('open');
   function go(page){const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理・履歴'};document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));$(page+'Page').classList.remove('hidden');$('pageTitle').textContent=titles[page];document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='admin'&&isManager())loadAdmin();}
+  // Dashboard actions navigate directly, rather than simulating a click on
+  // another (sometimes hidden) menu button. One handler owns all three cards.
+  function runDashboardShortcut(action){
+    if(!isManager())return;
+    if(action==='available'){
+      $('assetSearch').value='';
+      $('assetCategory').value='';
+      $('assetStatus').value='未使用';
+      go('assets');
+      $('assetStatus').dispatchEvent(new Event('change',{bubbles:true}));
+      $('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
+    }else if(action==='analysis'){
+      go('admin');
+      document.querySelector('#workspaceAdminTabs [data-admin-tab="analysis"]')?.click();
+      // Opening from a shortcut does not fire an admin navigation click;
+      // refresh the analysis explicitly rather than displaying stale data.
+      if(window.DaidoAnalysis?.render){
+        Promise.resolve(window.DaidoAnalysis.render()).catch(error=>{
+          console.error('備品分析の表示に失敗',error);
+          const body=$('adminAnalysisBody');
+          if(body)body.textContent='備品分析を表示できません。通信状態を確認して再試行してください。';
+        });
+      }
+    }else if(action==='new'){
+      go('assets');
+      openAssetForm();
+    }
+  }
+  document.addEventListener('click',event=>{
+    const b=event.target.closest('#workspaceDashboardShortcuts [data-shortcut]');
+    if(!b)return;
+    event.preventDefault();
+    runDashboardShortcut(b.dataset.shortcut);
+  });
   async function loadMasters(){
     const [c,l,d,u]=await Promise.all([
       db.from('categories').select('*').eq('is_active',true).order('name'),
