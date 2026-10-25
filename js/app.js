@@ -215,8 +215,42 @@
 
   function debounce(fn,ms){let t;return()=>{clearTimeout(t);t=setTimeout(fn,ms)}}
   $('assetSearch').oninput=debounce(loadAssets,300);$('assetStatus').onchange=loadAssets;$('assetCategory').onchange=loadAssets;
+  // One stable UUID per open create form makes network retries idempotent.
+  // It is not reused for a new registration or an existing-asset edit.
+  let pendingCreateId=null;
+  function generateAssetCreateId(){
+    const cryptoApi=window.crypto;
+    if(cryptoApi?.randomUUID)return cryptoApi.randomUUID();
+    if(!cryptoApi?.getRandomValues)throw new Error('安全な管理番号登録を開始できません。HTTPSで開き直してください。');
+    const bytes=new Uint8Array(16);cryptoApi.getRandomValues(bytes);
+    bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+    const hex=[...bytes].map(b=>b.toString(16).padStart(2,'0')).join('');
+    return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+  }
+  function assignmentHint(){
+    const hint=$('assetStatusHint');if(!hint)return;
+    const used=Boolean($('currentUserId').value);
+    const st=$('statusForm').value;
+    hint.textContent=st==='使用中'&&!used
+      ?'使用中にするには、使用者マスタから使用者を選択してください。'
+      :used&&(st==='未使用'||st==='廃棄')
+      ?'この状態では使用者を割り当てられません。返却や引継ぎを確認して使用者を解除してください。'
+      :st==='修理中'
+      ?'修理中は使用者を保持できます。修理完了・返却時に状態を確認してください。'
+      :'使用者を選ぶと、未使用から使用中へ自動切替します。返却時は現物確認後に状態も変更してください。';
+    hint.classList.toggle('workspace-field-warning',(st==='使用中'&&!used)||(used&&(st==='未使用'||st==='廃棄')));
+  }
+  $('currentUserId').addEventListener('change',()=>{
+    if($('currentUserId').value&&$('statusForm').value==='未使用'){
+      $('statusForm').value='使用中';
+      assignmentHint();
+      $('assetStatusHint').textContent='使用者を選択したため、ステータスを「使用中」に切り替えました。';
+    }else assignmentHint();
+  });
+  $('statusForm').addEventListener('change',assignmentHint);
   function openAssetForm(id=null){
     $('assetForm').reset();
+    pendingCreateId=id?null:generateAssetCreateId();
     pendingPhotoFile=null;pendingLabelPhotoFile=null;
     $('assetPhoto').value='';$('assetLabelPhoto').value='';
     $('assetPhotoPreview').classList.add('hidden');$('assetPhotoPreview').src='';
@@ -255,6 +289,7 @@
       setPhotoPreview(a.photo_path);setLabelPhotoPreview(a.label_photo_path);
     }else $('assetDialogTitle').textContent='新しい備品を登録';
     $('saveAssetBtn').textContent=id?'変更を保存':'備品を登録';
+    assignmentHint();
     $('assetFormError').textContent='';$('assetDialog').showModal();
   }
   $('newAssetBtn').onclick=()=>openAssetForm();
@@ -270,13 +305,35 @@
     const payload={asset_no:id?($('assetNo').value.trim()||null):null,name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
     const uploaded=[];let inserted=false,photoCommitted=false,saveCommitted=false,assetId=id;
     try{
+      // Client-side explanation; the database independently enforces the rule.
+      if(payload.status==='使用中'&&!payload.assigned_user_id){
+        throw new Error('「使用中」にするには、使用者マスタから使用者を選択してください。');
+      }
+      if((payload.status==='未使用'||payload.status==='廃棄')&&payload.assigned_user_id){
+        throw new Error('「未使用」「廃棄」にする前に、現物の返却・引継ぎを確認して使用者を解除してください。');
+      }
       if(id){
         const r=await db.from('assets').update(payload).eq('id',id).eq('is_deleted',false).select('id').single();
         if(r.error)throw r.error;saveCommitted=true;
       }else{
-        const r=await db.from('assets').insert(payload).select('id').single();
-        if(r.error)throw r.error;
-        assetId=r.data.id;inserted=true;saveCommitted=true;
+        // The PK is generated once for this form, not once per click/retry.
+        assetId=pendingCreateId||generateAssetCreateId();
+        pendingCreateId=assetId;
+        const r=await db.from('assets').insert({...payload,id:assetId}).select('id').single();
+        if(r.error){
+          // A timeout can occur after the server successfully committed.
+          // Read by *our own UUID* before claiming the insert failed.
+          const existing=await db.from('assets')
+            .select('id,name,asset_no').eq('id',assetId).eq('is_deleted',false).maybeSingle();
+          if(existing.error||!existing.data)throw r.error;
+          if(existing.data.name!==payload.name){
+            throw new Error('同じ登録操作はすでに別の内容で保存されています。管理番号を確認してから編集してください。');
+          }
+          assetId=existing.data.id;
+        }else{
+          assetId=r.data.id;
+        }
+        inserted=true;saveCommitted=true;
       }
       if(pendingPhotoFile||pendingLabelPhotoFile){
         const old=assets.find(x=>String(x.id)===String(assetId));
@@ -303,6 +360,7 @@
         }
       }
       $('assetDialog').close();pendingPhotoFile=null;pendingLabelPhotoFile=null;
+      pendingCreateId=null;
       await loadAssets();await loadDashboard();
     }catch(err){
       if(uploaded.length&&!photoCommitted){
