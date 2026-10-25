@@ -61,7 +61,7 @@
   }
 
   function qty(a){return Number(a.quantity||1)||1;}
-  function cleanName(v){return String(v||'名称未設定').trim().replace(/[　\\s]+/g,' ')||'名称未設定';}
+  function cleanName(v){return String(v||'名称未設定').trim().replace(/[　\s]+/g,' ')||'名称未設定';}
   // Analyze standardized display groups, without rewriting the source assets.
   // Preserve a search term guaranteed to match existing names.
   function typeGroup(raw){
