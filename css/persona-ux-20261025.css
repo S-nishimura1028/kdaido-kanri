@@ -96,3 +96,29 @@
 @media(prefers-reduced-motion:reduce){
  #workspaceDashboardShortcuts button{transition:none!important}
 }
+/* Daily field work: jump directly from dashboard status to equipment list. */
+#dashboardPage .stat.dashboard-stat-link{cursor:pointer;position:relative;transition:border-color .15s,box-shadow .15s,transform .15s}
+#dashboardPage .stat.dashboard-stat-link:hover{border-color:#91bfcd;box-shadow:0 9px 23px rgba(24,72,92,.12);transform:translateY(-1px)}
+#dashboardPage .stat.dashboard-stat-link:focus-visible{outline:3px solid #218db8;outline-offset:3px}
+#dashboardPage .stat .dashboard-stat-action{display:block;margin-top:6px;font-size:10px;font-weight:800;line-height:1.45;color:#22769b}
+#dashboardPage .stat.dashboard-stat-link[data-dashboard-status="未使用"] .dashboard-stat-action{color:#2b8059}
+#dashboardPage .stat.dashboard-stat-link[data-dashboard-status="修理中"] .dashboard-stat-action{color:#8c6a27}
+#historyTable .workspace-history-name{color:#1c658c;font-size:13px;display:block}
+#historyTable .workspace-history-asset{display:block;font-size:11px;color:#5b7984;margin-top:3px;line-height:1.5}
+#historyTable .workspace-history-actor{display:block;font-size:11px;color:#718993;margin-top:4px}
+#workspaceAdminHistory .workspace-history-link{overflow-wrap:anywhere;min-height:39px;text-align:left;padding:5px 1px}
+#workspaceAdminHistory .workspace-history-count{font-weight:730;color:#4e707c}
+#connectionStatus[role="status"]{display:inline-block;vertical-align:middle;line-height:1.45}
+@media(max-width:650px){
+ #dashboardPage .stat.dashboard-stat-link{min-height:110px;padding-bottom:13px}
+ #dashboardPage .stat .dashboard-stat-action{font-size:10px;margin-top:5px}
+ #historyTable,.workspace-history-pane #workspaceHistoryRows{overflow:visible;border:0;box-shadow:none;background:transparent;padding:0}
+ #historyTable table,.workspace-history-pane #workspaceHistoryRows table{display:block;min-width:0;width:100%;background:transparent;border:none}
+ #historyTable thead,.workspace-history-pane #workspaceHistoryRows thead{display:none}
+ #historyTable tbody,.workspace-history-pane #workspaceHistoryRows tbody{display:grid;grid-template-columns:minmax(0,1fr);gap:11px}
+ #historyTable tbody tr,.workspace-history-pane #workspaceHistoryRows tbody tr{display:block;border:1px solid #dce8e9;border-radius:13px;background:#fff;padding:11px 13px;box-shadow:0 3px 10px rgba(16,70,90,.035)}
+ #historyTable tbody td,.workspace-history-pane #workspaceHistoryRows tbody td{border:0!important;padding:6px 0!important;display:grid;grid-template-columns:75px minmax(0,1fr);gap:9px;text-align:left!important;align-items:start;min-width:0;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+ #historyTable tbody td::before,.workspace-history-pane #workspaceHistoryRows tbody td::before{content:attr(data-label);font-size:10.5px;font-weight:800;color:#6d8994;padding-top:2px}
+ #historyTable .workspace-history-name{font-size:12.5px}
+ #workspaceAdminHistory .workspace-history-link{max-width:100%;min-height:38px}
+}
