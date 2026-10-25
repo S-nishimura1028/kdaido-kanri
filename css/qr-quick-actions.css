@@ -1,0 +1,56 @@
+/* QR workflow: mobile-first, respects existing Daido brand tokens. */
+#qrQuickPanel{background:linear-gradient(140deg,#f4f9fc,#f2f9f5);border:1px solid #cfe1e5;border-radius:15px;padding:15px 16px;margin:15px 0 16px}
+.qr-quick-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.qr-quick-heading h4{font-size:16px;letter-spacing:-.01em;font-weight:850;color:#183e57;margin:2px 0 0}
+.qr-quick-heading small,.qr-quick-eyebrow{font-size:10px;letter-spacing:.04em;font-weight:750;color:#6c8790}
+.qr-quick-tag{background:#e3f1e8;color:#337655;font-size:10px;font-weight:800;border-radius:999px;padding:5px 9px;white-space:nowrap}
+.qr-quick-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.qr-quick-action{background:#fff;border:1px solid #d6e7e9;box-shadow:0 2px 8px rgba(6,46,73,.025);border-radius:12px;min-height:75px;padding:12px 13px;text-align:left;display:flex;flex-direction:column;justify-content:center;gap:6px;color:#174e70}
+.qr-quick-action strong{font-size:14px;line-height:1.45;font-weight:850}
+.qr-quick-action small{font-size:11px;line-height:1.5;color:#728990}
+.qr-quick-action:hover{background:#eef8fc;border-color:#aad0d9;box-shadow:0 6px 17px rgba(12,73,111,.085)}
+.qr-quick-action.qr-quick-lend{border-left:4px solid #3b91bd}
+.qr-quick-action.qr-quick-return{border-left:4px solid #479969}
+.qr-quick-action.qr-quick-fault{border-left:4px solid #d3a15f}
+.qr-quick-action.qr-quick-move{border-left:4px solid #8498af}
+.qr-quick-action:focus-visible{outline:3px solid #45a4d7;outline-offset:2px}
+.qr-quick-footnote,.qr-quick-loading{font-size:11px;color:#6e8992;line-height:1.6}
+.qr-quick-footnote{margin:12px 0 0}
+.qr-quick-loading{padding:8px 2px;margin:0}
+.qr-quick-dialog{width:min(570px,calc(100vw - 16px));max-height:min(90vh,780px);overflow-y:auto;overscroll-behavior:contain}
+.qr-quick-shell{padding:23px}
+.qr-quick-asset{font-size:14px;font-weight:850;color:#164c6d;background:#eef7fa;border:1px solid #d7e8ed;border-radius:10px;padding:13px;margin:0 0 13px;line-height:1.6;overflow-wrap:anywhere}
+.qr-quick-help{color:#647f86;font-size:12px;line-height:1.7;margin:6px 0 18px}
+.qr-quick-shell #qrQuickFields label,.qr-quick-note-label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:750;color:#315b6e}
+.qr-quick-shell #qrQuickFields select{width:100%;min-height:47px;font-size:14px;margin-bottom:15px;line-height:1.4}
+.qr-quick-shell #qrQuickFields select:disabled{background:#f0f5f5;color:#4d717d;opacity:1}
+.qr-quick-shell #qrQuickNote{min-height:84px;font-size:14px;line-height:1.6;resize:vertical}
+.qr-quick-ack{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:11px!important;padding:14px 13px;margin:17px 0 0;background:#f5f9f7;border:1px solid #d9e8dd;border-radius:12px;cursor:pointer;font-size:13px!important;color:#285c4c!important}
+.qr-quick-ack input{width:23px!important;height:23px!important;min-height:23px;flex:0 0 23px;margin:0;accent-color:#218b6e;cursor:pointer}
+.qr-quick-ack span{line-height:1.5;flex:1}
+.qr-quick-dialog .dialog-actions{border-top:1px solid #e5eeee;padding-top:14px;margin-top:15px;flex-wrap:wrap;gap:10px}
+.qr-quick-dialog .dialog-actions button{flex:1 1 160px;min-height:47px;line-height:1.4;padding:11px 15px;font-size:13px;font-weight:800}
+.qr-quick-summary{display:grid;gap:0;border:1px solid #e0eaec;border-radius:13px;overflow:hidden;margin-bottom:17px}
+.qr-quick-summary>div{display:grid;grid-template-columns:minmax(94px,33%) minmax(0,1fr);align-items:start;padding:11px 13px;gap:13px;border-bottom:1px solid #e7eef0;background:#fff;font-size:12px}
+.qr-quick-summary>div:nth-child(odd){background:#f8fbfc}
+.qr-quick-summary>div:last-child{border-bottom:0}
+.qr-quick-summary dt{color:#728992;font-weight:750}
+.qr-quick-summary dd{margin:0;color:#244f61;font-weight:750;overflow-wrap:anywhere;line-height:1.6}
+.qr-quick-dialog .error:not(:empty){border:1px solid #ebc6ba;background:#fff6f2;padding:10px 12px;border-radius:9px;font-size:12px;line-height:1.65;margin-top:12px}
+.qr-quick-feedback{padding:12px 13px;margin:0 0 15px;border:1px solid #bee0c8;background:#f0faf2;color:#2b7151;border-radius:10px;font-size:12px;font-weight:750;line-height:1.6}
+@media(max-width:600px){
+ #qrQuickPanel{padding:13px;margin:12px 0 14px}
+ .qr-quick-action{min-height:78px;padding:11px}
+ .qr-quick-action strong{font-size:13px}
+ .qr-quick-action small{font-size:10.5px}
+ .qr-quick-shell{padding:17px}
+ .qr-quick-dialog .dialog-head{margin-bottom:14px}
+ .qr-quick-dialog .dialog-head h3{font-size:18px}
+ .qr-quick-summary>div{grid-template-columns:100px minmax(0,1fr);padding:10px}
+ .qr-quick-dialog .dialog-actions button{min-height:49px}
+}
+@media(max-width:360px){
+ .qr-quick-buttons{grid-template-columns:1fr}
+ .qr-quick-action{min-height:61px}
+}
+@media(prefers-reduced-motion:reduce){.qr-quick-action{transition:none!important}}
