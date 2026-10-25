@@ -194,5 +194,6 @@
     const b=e.target.closest('.nav-btn[data-page="admin"],[data-go="admin"]');
     if(b)setTimeout(render,120);
   });
+  window.DaidoAnalysis=Object.freeze({render});
   window.addEventListener('DOMContentLoaded',()=>setTimeout(render,600));
 })();
