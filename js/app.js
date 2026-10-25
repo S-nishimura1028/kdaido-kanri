@@ -99,6 +99,7 @@
   function runDashboardShortcut(action){
     if(!isManager())return;
     if(action==='available'){
+      window.DaidoAnalysisFilter=null;
       $('assetSearch').value='';
       $('assetCategory').value='';
       $('assetStatus').value='未使用';
@@ -118,6 +119,7 @@
         });
       }
     }else if(action==='new'){
+      window.DaidoAnalysisFilter=null;
       go('assets');
       openAssetForm();
     }
@@ -127,6 +129,20 @@
     if(!b)return;
     event.preventDefault();
     runDashboardShortcut(b.dataset.shortcut);
+  });
+  // Exact ID-scoped drill-down keeps similarly named equipment separate.
+  // A new search or category choice leaves this special scope.
+  window.DaidoAssetNav=Object.freeze({
+    openFromAnalysis:({ids,status,label})=>{
+      const safeIds=(ids||[]).filter(id=>/^[0-9a-f-]{36}$/i.test(id));
+      if(!safeIds.length)return;
+      window.DaidoAnalysisFilter={ids:new Set(safeIds),label:String(label||'選択した種類')};
+      $('assetSearch').value='';
+      $('assetCategory').value='';
+      $('assetStatus').value=['使用中','未使用','修理中','廃棄'].includes(status)?status:'';
+      go('assets');
+      $('assetStatus').dispatchEvent(new Event('change',{bubbles:true}));
+    }
   });
   async function loadMasters(){
     const [c,l,d,u]=await Promise.all([
@@ -153,6 +169,7 @@
     const thisLoad=++assetLoadSequence;
     const search=$('assetSearch').value.trim().normalize('NFKC').toLowerCase();
     const st=$('assetStatus').value,cat=$('assetCategory').value;
+    const scopedIds=window.DaidoAnalysisFilter?.ids||null;
     let q=db.from('assets').select('*').eq('is_deleted',false).order('asset_no').order('id');
     if(st)q=q.eq('status',st);if(cat)q=q.eq('category',cat);
     const rows=[];
@@ -164,10 +181,10 @@
     }
     if(thisLoad!==assetLoadSequence)return;
     // Including current-user master and physical storage location in search.
-    assets=rows.filter(a=>!search||[a.asset_no,a.name,a.manufacturer,a.model,a.location,
+    assets=rows.filter(a=>(!scopedIds||scopedIds.has(a.id))&&(!search||[a.asset_no,a.name,a.manufacturer,a.model,a.location,
       a.department,a.user_name,...(assetUsers.filter(u=>u.id===a.assigned_user_id)
         .flatMap(u=>[u.name,u.department,u.location,u.room_number]))]
-      .some(v=>String(v||'').normalize('NFKC').toLowerCase().includes(search)));
+      .some(v=>String(v||'').normalize('NFKC').toLowerCase().includes(search))));
     renderAssetsTable(assets,'assetTable',true);
     openAssetFromUrlOnce();
   }
@@ -248,6 +265,12 @@
   }
 
   function debounce(fn,ms){let t;return()=>{clearTimeout(t);t=setTimeout(fn,ms)}}
+  $('assetSearch').addEventListener('input',event=>{
+    if(event.isTrusted)window.DaidoAnalysisFilter=null;
+  });
+  $('assetCategory').addEventListener('change',event=>{
+    if(event.isTrusted)window.DaidoAnalysisFilter=null;
+  });
   $('assetSearch').oninput=debounce(loadAssets,300);$('assetStatus').onchange=loadAssets;$('assetCategory').onchange=loadAssets;
   // One stable UUID per open create form makes network retries idempotent.
   // It is not reused for a new registration or an existing-asset edit.
