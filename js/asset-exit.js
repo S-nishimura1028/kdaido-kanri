@@ -243,12 +243,12 @@ function choiceHtml(type,item){
 function renderItem(item){
  const asset=state.assets.find(a=>a.id===item.asset_id);
  const processed=item.resolution!=='pending';
- const top='<div class="exit-item-header"><div><small>'+esc(item.asset_no_snapshot)+'</small><strong>'+esc(item.asset_name_snapshot)+'</strong><span class="exit-meta">'+esc(asset?.location||'場所未設定')+' ／ '+esc(asset?.status||'状態未確認')+'</span></div><span class="exit-badge exit-'+esc(item.resolution)+'">'+esc(label[item.resolution]||item.resolution)+'</span></div>';
+ const top='<div class="exit-item-header"><div><small>'+esc(item.asset_no_snapshot)+'</small><strong>'+esc(item.asset_name_snapshot)+'</strong><span class="exit-meta">'+esc(asset?.location||'場所未設定')+' ／ '+esc(asset?.status||'状態未確認')+'</span></div><span class="exit-badge exit-'+esc(item.resolution)+'">'+esc(item.recovered_at?'後日回収済み':(label[item.resolution]||item.resolution))+'</span></div>';
  if(processed){
   const recipient=userById(item.next_user_id);
   return '<article class="exit-item exit-done">'+top+
    '<p class="exit-processed">'+(item.resolution==='transferred'?'引継ぎ先：'+esc(recipient?.name||'登録済み使用者')+' ／ ':'')+
-   (item.resolution==='unrecovered'?'未回収のため引き続き調査対象です。／ ':'')+
+   (item.resolution==='unrecovered'?(item.recovered_at?'後日回収済み。／ ':'未回収のため引き続き調査対象です。／ '):'')+
    '確認日：'+esc(item.checked_at?new Date(item.checked_at).toLocaleString('ja-JP'):'-')+'</p>'+
    (item.note?'<p class="exit-item-note">'+esc(item.note)+'</p>':'')+'</article>';
  }
@@ -270,7 +270,7 @@ function renderSession(){
  const s=state.session;if(!s){target.innerHTML='';return}
  const user=userById(s.asset_user_id);
  const pending=state.items.filter(i=>i.resolution==='pending').length;
- const missing=state.items.filter(i=>i.resolution==='unrecovered').length;
+ const missing=state.items.filter(i=>i.resolution==='unrecovered'&&!i.recovered_at).length;
  const total=state.items.length,done=total-pending;
  target.innerHTML='<div class="exit-session-head"><div><small>退去チェック進捗</small><h4>'+esc(fullname(user))+'</h4><p>点検した備品を1点ずつ確定します。返却・引継ぎの更新は自動的に履歴へ記録します。</p></div><button class="secondary" type="button" id="exitReload">最新の状態に更新</button></div>'+
  '<div class="exit-progress-numbers"><strong>'+done+' / '+total+' 件処理済み</strong><span>未処理 '+pending+'件'+(missing?' ／ 未回収 '+missing+'件':'')+'</span></div>'+
@@ -339,7 +339,7 @@ async function finalize(){
  const s=state.session;if(!s||state.busy)return;
  const pending=state.items.filter(i=>i.resolution==='pending').length;
  if(pending){toast('未処理の備品が'+pending+'件残っています。',true);return}
- const missing=state.items.filter(i=>i.resolution==='unrecovered').length;
+ const missing=state.items.filter(i=>i.resolution==='unrecovered'&&!i.recovered_at).length;
  const user=userById(s.asset_user_id);
  const promptText='「'+(user?.name||'使用者')+'」の利用終了を確定します。\n'+
   'すべての備品の処理結果を確認した場合だけ進めてください。'+
