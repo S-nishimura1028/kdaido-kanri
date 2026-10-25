@@ -179,7 +179,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
         <button data-page="assets" class="nav-btn">備品一覧</button>
         
         <button data-page="history" class="nav-btn">履歴</button>
-        <button data-page="admin" class="nav-btn admin-only hidden">管理</button>
+        <button data-page="admin" class="nav-btn admin-only hidden">管理・履歴</button>
       </nav>
       <button id="logoutBtn" class="logout">ログアウト</button>
     </aside>
@@ -191,7 +191,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
           <span id="userInfo"></span><span id="connectionStatus" class="connection-status">接続確認中…</span>
         </div>
         <button id="mobileLogoutBtn" type="button" class="secondary mobile-logout">ログアウト</button>
-        <button id="mobileMenu" class="icon-btn">☰</button>
+        <button id="mobileMenu" type="button" class="icon-btn" title="メニューを開く" aria-label="メニューを開く">☰</button>
       </header>
 
       <section id="dashboardPage" class="page">
@@ -204,7 +204,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
           <div class="stat warning"><span>写真登録済み</span><strong id="statPhoto">-</strong></div>
         </div>
         <div class="panel">
-          <div class="panel-head"><h3>最近の備品</h3><button class="secondary" data-go="assets">一覧を見る</button></div>
+          <div class="panel-head"><h3>最近の備品</h3><button type="button" class="secondary" data-go="assets">備品一覧を見る</button></div>
           <div id="recentAssets" class="table-wrap"></div>
         </div>
       </section>
@@ -212,11 +212,11 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
       <section id="assetsPage" class="page hidden">
         <div class="toolbar">
           <input id="assetSearch" type="search" aria-label="備品を検索" autocomplete="off" placeholder="管理No.・備品名・保管場所などで検索">
-          <select id="assetStatus"><option value="">すべての状態</option><option>未使用</option><option>使用中</option><option>修理中</option><option>廃棄</option></select>
-          <select id="assetCategory"><option value="">すべてのカテゴリ</option></select>
-          <button id="newAssetBtn" class="primary admin-only hidden">＋ 備品登録</button>
+          <select id="assetStatus" aria-label="備品の状態で絞り込み"><option value="">すべての状態</option><option>未使用</option><option>使用中</option><option>修理中</option><option>廃棄</option></select>
+          <select id="assetCategory" aria-label="備品のカテゴリで絞り込み"><option value="">すべてのカテゴリ</option></select>
+          <button id="newAssetBtn" type="button" class="primary admin-only hidden" title="新しい備品を登録する" aria-label="新しい備品を登録する">＋ 新規登録</button>
         </div>
-        <div id="assetTable" class="table-wrap"></div>
+        <div id="assetTable" class="table-wrap" aria-live="polite"></div>
       </section>
 
       <section id="historyPage" class="page hidden">
@@ -248,7 +248,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
   <dialog id="assetDialog">
     <form method="dialog" id="assetForm" class="dialog-card">
-      <div class="dialog-head"><h3 id="assetDialogTitle">備品登録</h3><button value="cancel" class="close">×</button></div>
+      <div class="dialog-head"><h3 id="assetDialogTitle">備品登録</h3><button value="cancel" class="close" aria-label="登録・編集画面を閉じる" title="閉じる">×</button></div>
       <input type="hidden" id="assetId">
       <div class="form-grid">
         <label>管理No.（自動採番）<input id="assetNo" placeholder="保存すると自動で付番されます" readonly><small style="font-size:12px;color:var(--muted);font-weight:500">新規登録するとKD-0001形式の番号が自動発行されます。既存番号は変更できません。</small></label>
@@ -281,14 +281,14 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
           <input id="unit" value="個">
         </div>
       </div>
-      <div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button id="saveAssetBtn" class="primary" value="default">保存</button></div>
+      <div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button id="saveAssetBtn" class="primary" value="default">備品を登録</button></div>
       <div id="assetFormError" class="error"></div>
     </form>
   </dialog>
 
   <dialog id="detailDialog">
     <div class="dialog-card">
-      <div class="dialog-head"><h3>備品詳細</h3><button id="detailClose" class="close">×</button></div>
+      <div class="dialog-head"><h3>備品詳細</h3><button id="detailClose" type="button" class="close" aria-label="備品詳細を閉じる" title="閉じる">×</button></div>
       <div id="assetDetail"></div>
     </div>
   </dialog>
