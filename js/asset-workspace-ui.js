@@ -150,15 +150,23 @@ function getHistory(){
  if(!t)return [];
  return [...t.querySelectorAll('tbody tr')].map(r=>{
   var c=r.querySelectorAll('td');
-  return {date:c[0]?.textContent.trim()||'',id:c[1]?.textContent.trim()||'',action:c[2]?.textContent.trim()||'',desc:c[3]?.textContent.trim()||''};
+  return {
+   date:c[0]?.textContent.trim()||'',
+   id:r.dataset.assetId||'',
+   assetNo:r.dataset.assetNo||'',
+   assetName:r.dataset.assetName||'',
+   action:c[2]?.textContent.trim()||'',
+   desc:c[3]?.textContent.trim()||''
+  };
  });
 }
 async function lookupAssets(){
- if(lookupDone||!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return;
+ if(lookupDone)return;
+ const c=window.DaidoQrBridge?.getClient?.();
+ if(!c)return;
  lookupDone=true;
  try{
-  var c=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-  var res=await c.from('assets').select('id,asset_no,name').limit(1000);
+  const res=await c.from('assets').select('id,asset_no,name').eq('is_deleted',false).limit(1000);
   if(res.error)throw res.error;
   (res.data||[]).forEach(a=>assetMap.set(String(a.id),{number:a.asset_no||'',name:a.name||''}));
   if(adminTab==='history')renderAdminHistory();
@@ -176,15 +184,18 @@ function renderAdminHistory(){
  }
  var filtered=records.filter(r=>{
   if(historyType&&r.action!==historyType)return false;
-  var a=assetMap.get(r.id),label=a?(a.number+' '+a.name):'';
+  var a=assetMap.get(r.id),label=[r.assetNo||a?.number||'',r.assetName||a?.name||''].join(' ');
   return !historySearch||[r.date,r.id,r.action,r.desc,label].join(' ').normalize('NFKC').toLowerCase().includes(historySearch);
  });
  var shown=filtered.slice(0,historyLimit);
  $('workspaceHistoryCount').textContent='表示 '+shown.length+'件 ／ 該当 '+filtered.length+'件';
  host.innerHTML=shown.length?'<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>'+shown.map(r=>{
-  var a=assetMap.get(r.id),label=a?(a.number+' / '+a.name):(r.id.slice(0,8)+'…');
+  var a=assetMap.get(r.id),no=r.assetNo||a?.number||'',name=r.assetName||a?.name||'';
+  var label=no?(no+' / '+name):(r.id?r.id.slice(0,8)+'…':'記録された備品');
   var actionClass=/廃棄|削除/.test(r.action)?'dispose':/修理|故障/.test(r.action)?'repair':'use';
-  var link=a?.number?'<button type="button" class="workspace-history-link" data-asset-search="'+esc(a.number)+'">'+esc(label)+'</button>':esc(label);
+  var link=(a?.number||no)&&a?
+    '<button type="button" class="workspace-history-link" data-asset-search="'+esc(no||a.number)+'">'+esc(label)+'</button>':
+    esc(label);
   return '<tr><td data-label="日時">'+esc(r.date)+'</td><td data-label="備品">'+link+'</td><td><span class="badge '+actionClass+'">'+esc(r.action)+'</span></td><td>'+esc(r.desc)+'</td></tr>';
  }).join('')+'</tbody></table>':'<div class="workspace-list-empty">該当する履歴はありません。</div>';
  $('workspaceHistoryMore').classList.toggle('hidden',shown.length>=filtered.length);
@@ -228,7 +239,8 @@ function initAdmin(){
  $('workspaceHistoryMore').addEventListener('click',()=>{historyLimit+=80;renderAdminHistory()});
  $('workspaceHistoryRows').addEventListener('click',ev=>{
   var b=ev.target.closest('[data-asset-search]');if(!b)return;
-  $('assetSearch').value=b.dataset.assetSearch;$('assetStatus').value='';
+  window.DaidoAnalysisFilter=null;
+  $('assetSearch').value=b.dataset.assetSearch;$('assetStatus').value='';$('assetCategory').value='';
   $('.nav-btn[data-page="assets"]')?.click();
   $('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
  });
