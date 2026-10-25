@@ -54,16 +54,27 @@ function renderCards(){
  if(!table){host.innerHTML='<div class="workspace-list-empty">該当する備品はありません。</div>';if($('workspaceAssetCount'))$('workspaceAssetCount').textContent='検索結果 0件';return}
  var headings=[...table.querySelectorAll('thead th')].map(x=>x.textContent.trim());
  var rows=[...table.querySelectorAll('tbody tr[data-id]')];
- rows.forEach(row=>[...row.querySelectorAll('td')].forEach((td,i)=>{td.dataset.label=headings[i]||''}));
+ rows.forEach(row=>{
+  [...row.querySelectorAll('td')].forEach((td,i)=>{td.dataset.label=headings[i]||''});
+  if(row.dataset.workspaceKeyboard)return;
+  row.dataset.workspaceKeyboard='1';
+  row.tabIndex=0;
+  row.title='Enterキーでも備品詳細を開けます';
+  row.addEventListener('keydown',e=>{
+   if(e.target!==row||(e.key!=='Enter'&&e.key!==' '))return;
+   e.preventDefault();
+   row.click();
+  });
+ });
  var cell=(row,name)=>{var i=headings.indexOf(name);return i<0?'':row.querySelectorAll('td')[i]?.textContent.trim()||''};
  if($('workspaceAssetCount'))$('workspaceAssetCount').textContent='検索結果 '+rows.length.toLocaleString('ja-JP')+'件';
  host.innerHTML=rows.map(row=>{
   var id=esc(row.dataset.id),no=cell(row,'備品番号'),name=cell(row,'備品名');
   var status=cell(row,'状態'),location=cell(row,'保管場所'),category=cell(row,'カテゴリ'),amount=cell(row,'数量');
   var source=row.querySelector('.qr-row-check');
-  var checkbox=source?'<label class="workspace-card-check"><input type="checkbox" data-id="'+id+'" '+(source.checked?'checked':'')+'>印刷対象</label>':'';
-  var edit=row.querySelector('.edit-asset')?'<button type="button" class="workspace-edit" data-workspace-action="edit">編集</button>':'';
-  return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-kicker">備品 / ASSET</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><div class="workspace-card-identity"><span class="workspace-card-symbol">'+assetGlyph(name)+'</span><div class="workspace-card-identity-text"><span class="workspace-card-number">'+esc(no)+'</span><h3>'+esc(name)+'</h3></div></div><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div>'+(category&&category!=='その他'?'<div><dt>分類</dt><dd>'+esc(category)+'</dd></div>':'')+'<div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail">詳細を見る</button>'+edit+checkbox+'</div></article>';
+  var checkbox=source?'<label class="workspace-card-check"><input type="checkbox" data-id="'+id+'" aria-label="'+esc(no)+' '+esc(name)+' をQRシール印刷対象にする" '+(source.checked?'checked':'')+'>QR印刷対象</label>':'';
+  var edit=row.querySelector('.edit-asset')?'<button type="button" class="workspace-edit" data-workspace-action="edit" aria-label="'+esc(no)+' '+esc(name)+' の情報を編集">情報を編集</button>':'';
+  return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-kicker">備品 / ASSET</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><div class="workspace-card-identity"><span class="workspace-card-symbol">'+assetGlyph(name)+'</span><div class="workspace-card-identity-text"><span class="workspace-card-number">'+esc(no)+'</span><h3>'+esc(name)+'</h3></div></div><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div>'+(category&&category!=='その他'?'<div><dt>分類</dt><dd>'+esc(category)+'</dd></div>':'')+'<div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail" aria-label="'+esc(no)+' '+esc(name)+' の詳細を見る">詳細を見る</button>'+edit+checkbox+'</div></article>';
  }).join('')||'<div class="workspace-list-empty">該当する備品はありません。</div>';
  updateChips();updateClearControl();
 }
@@ -75,7 +86,7 @@ function initAssets(){
  toolbar.insertAdjacentElement('afterend',chips);
  chips.addEventListener('click',ev=>{var b=ev.target.closest('[data-state]');if(b)pickStatus(b.dataset.state||'')});
  var head=document.createElement('div');head.id='assetWorkspaceHead';head.className='workspace-asset-head';
- head.innerHTML='<div><strong id="workspaceAssetCount">備品を読み込み中…</strong><p>名称・状態・場所をすばやく確認 <button type="button" id="workspaceResetFilters" class="workspace-clear-filters hidden">条件をクリア</button></p></div><div class="workspace-list-switch" role="group" aria-label="表示形式"><button type="button" class="workspace-view-btn" data-view="cards" aria-pressed="false">▦ カード</button><button type="button" class="workspace-view-btn" data-view="table" aria-pressed="false">☷ 一覧表</button></div>';
+ head.innerHTML='<div><strong id="workspaceAssetCount">備品を読み込み中…</strong><p>備品を選ぶと写真・使用者・変更履歴を確認できます <button type="button" id="workspaceResetFilters" class="workspace-clear-filters hidden">検索条件を解除</button></p></div><div class="workspace-list-switch" role="group" aria-label="表示形式"><button type="button" class="workspace-view-btn" data-view="cards" aria-pressed="false">▦ カード</button><button type="button" class="workspace-view-btn" data-view="table" aria-pressed="false">☷ 一覧表</button></div>';
  table.insertAdjacentElement('beforebegin',head);
  head.addEventListener('click',ev=>{
   var reset=ev.target.closest('#workspaceResetFilters');
@@ -87,6 +98,7 @@ function initAssets(){
   var b=ev.target.closest('[data-view]');if(b)setView(b.dataset.view);
  });
  var grid=document.createElement('div');grid.id='assetCardGrid';grid.className='workspace-asset-grid';grid.setAttribute('aria-label','備品カード一覧');
+ grid.setAttribute('aria-live','polite');
  table.insertAdjacentElement('afterend',grid);
  grid.addEventListener('click',ev=>{
   if(ev.target.closest('.workspace-card-check'))return;
@@ -184,11 +196,18 @@ function initAdmin(){
  var grid=$('adminPage')?.querySelector('.admin-grid');if(!grid||$('workspaceAdminTabs'))return;
  var tabs=document.createElement('div');tabs.id='workspaceAdminTabs';tabs.className='workspace-tabs';
  tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','管理画面メニュー');
- tabs.innerHTML=[['analysis','備品分析'],['users','使用者管理'],['settings','基本設定'],['history','変更履歴']].map(x=>'<button type="button" role="tab" class="workspace-tab" data-admin-tab="'+x[0]+'" aria-selected="false">'+x[1]+'</button>').join('');
+ tabs.innerHTML=[['analysis','備品分析'],['users','使用者管理'],['settings','管理設定'],['history','変更履歴']].map(x=>'<button type="button" role="tab" class="workspace-tab" data-admin-tab="'+x[0]+'" aria-selected="false">'+x[1]+'</button>').join('');
  grid.insertAdjacentElement('beforebegin',tabs);
  tabs.addEventListener('click',ev=>{var b=ev.target.closest('[data-admin-tab]');if(b)setAdminTab(b.dataset.adminTab)});
+ tabs.addEventListener('keydown',ev=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(ev.key))return;
+  var b=ev.target.closest('[data-admin-tab]');if(!b)return;
+  var buttons=[...tabs.querySelectorAll('[data-admin-tab]')],index=buttons.indexOf(b);
+  var next=ev.key==='Home'?0:ev.key==='End'?buttons.length-1:(index+(ev.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+  ev.preventDefault();setAdminTab(buttons[next].dataset.adminTab);buttons[next].focus();
+ });
  var pane=document.createElement('section');pane.id='workspaceAdminHistory';pane.className='workspace-history-pane hidden';
- pane.innerHTML='<div class="panel"><div class="panel-head"><h3>備品の変更履歴</h3></div><div class="workspace-history-tools"><input id="workspaceHistorySearch" type="search" aria-label="変更履歴を検索" placeholder="管理No.・備品名・操作内容で検索"><select id="workspaceHistoryKind" aria-label="操作区分"><option value="">すべての操作</option></select></div><div id="workspaceHistoryCount" class="workspace-history-count"></div><div id="workspaceHistoryRows" class="table-wrap"></div><button type="button" id="workspaceHistoryMore" class="secondary hidden" style="min-height:42px;margin-top:12px">さらに表示</button></div>';
+ pane.innerHTML='<div class="panel"><div class="panel-head"><h3>備品の変更履歴</h3></div><div class="workspace-history-tools"><input id="workspaceHistorySearch" type="search" aria-label="変更履歴を検索" placeholder="管理No.・備品名・操作内容で検索"><select id="workspaceHistoryKind" aria-label="操作区分"><option value="">すべての操作</option></select></div><div id="workspaceHistoryCount" class="workspace-history-count"></div><div id="workspaceHistoryRows" class="table-wrap"></div><button type="button" id="workspaceHistoryMore" class="secondary hidden" style="min-height:42px;margin-top:12px">次の80件を表示</button></div>';
  grid.insertAdjacentElement('afterend',pane);
  $('workspaceHistorySearch').addEventListener('input',ev=>{historySearch=ev.target.value.trim().normalize('NFKC').toLowerCase();historyLimit=80;renderAdminHistory()});
  $('workspaceHistoryKind').addEventListener('change',ev=>{historyType=ev.target.value;historyLimit=80;renderAdminHistory()});
@@ -211,7 +230,7 @@ function initDetail(){
   var photos=host.querySelector('#detailPhotos'),info=host.querySelector('.detail-grid'),actions=host.querySelector('.dialog-actions');
   if(!info||!actions)return;
   var tabs=document.createElement('div');tabs.id='workspaceDetailTabs';tabs.className='workspace-tabs workspace-detail-tabs';
-  tabs.innerHTML='<button type="button" class="workspace-tab" data-detail-tab="info">基本情報</button><button type="button" class="workspace-tab" data-detail-tab="photos">写真</button><button type="button" class="workspace-tab" data-detail-tab="history">変更履歴</button>';
+  tabs.innerHTML='<button type="button" class="workspace-tab" data-detail-tab="info">基本情報</button><button type="button" class="workspace-tab" data-detail-tab="photos">写真</button><button type="button" class="workspace-tab" data-detail-tab="history">この備品の履歴</button>';
   host.insertBefore(tabs,photos);
   var history=document.createElement('div');history.id='workspaceDetailHistory';history.className='hidden';host.insertBefore(history,actions);
   function change(t){
