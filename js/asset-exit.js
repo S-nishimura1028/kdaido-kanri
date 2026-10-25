@@ -201,7 +201,7 @@ async function saveItem(itemId){
  if(resolution==='unrecovered'&&note.length<10){toast('回収不能の理由・調査内容を10文字以上で入力してください。',true);return}
  if(!verified){toast('現物確認、または所在調査のチェックを入れてください。',true);return}
  const title={returned:'返却・回収',transferred:'直接引継ぎ',unrecovered:'回収不能の記録'}[resolution];
- const target=resolution==='transferred'?' → '+fullname(userById(nextUser)):'';
+ const target=resolution==='transferred'?' → '+fullname(userById(nextUser))+'（保管場所は変更しません）':'';
  const warning=resolution==='unrecovered'?
   '\n\n※ 備品は返却済みになりません。利用終了後も未回収として追跡します。':'';
  const question=item.asset_no_snapshot+' '+item.asset_name_snapshot+'\n処理：'+title+target+
@@ -265,9 +265,10 @@ function init(){
   const save=e.target.closest('[data-exit-save]');if(save){saveItem(save.dataset.exitSave);return}
   const find=e.target.closest('[data-exit-find]');
   if(find){
-   const search=$('assetSearch'),status=$('assetStatus');
+   const search=$('assetSearch'),status=$('assetStatus'),category=$('assetCategory');
    if(search&&status){
      search.value=find.dataset.exitFind;status.value='';
+     if(category)category.value='';
      document.querySelector('.nav-btn[data-page="assets"]')?.click();
      status.dispatchEvent(new Event('change',{bubbles:true}));
      search.dispatchEvent(new Event('input',{bubbles:true}));
