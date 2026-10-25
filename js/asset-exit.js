@@ -3,7 +3,7 @@
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const label={pending:'未処理',returned:'返却済み',transferred:'引継ぎ済み',unrecovered:'回収不能（要追跡）'};
-const state={users:[],assets:[],sessions:[],items:[],session:null,busy:false,loadSeq:0};
+const state={users:[],assets:[],sessions:[],items:[],unrecovered:[],session:null,busy:false,loadSeq:0};
 const db=()=>window.DaidoQrBridge?.getClient()||null;
 const setText=(id,text)=>{const el=$(id);if(el)el.textContent=text||''};
 const err=e=>e?.message||'処理に失敗しました。通信状況を確認してください。';
@@ -26,12 +26,13 @@ async function readList(table,columns,build){
 }
 async function refreshRoster(){
  const c=db();if(!c)throw new Error('管理者ログインが必要です');
- const [users,assets,sessions]=await Promise.all([
+ const [users,assets,sessions,unrecovered]=await Promise.all([
   readList('asset_users','id,name,department,location,room_number,is_active',q=>q.order('name').limit(1000)),
   readList('assets','id,asset_no,name,status,assigned_user_id,location,is_deleted',q=>q.eq('is_deleted',false).limit(2000)),
-  readList('asset_exit_sessions','id,asset_user_id,status,started_at,completed_at',q=>q.order('started_at',{ascending:false}).limit(300))
+  readList('asset_exit_sessions','id,asset_user_id,status,started_at,completed_at',q=>q.order('started_at',{ascending:false}).limit(300)),
+  readList('asset_exit_items','asset_id,asset_no_snapshot,asset_name_snapshot,session_id,note,checked_at',q=>q.eq('resolution','unrecovered').order('checked_at',{ascending:false}).limit(300))
  ]);
- state.users=users;state.assets=assets;state.sessions=sessions;
+ state.users=users;state.assets=assets;state.sessions=sessions;state.unrecovered=unrecovered;
  const selected=$('exitUserSelect')?.value||'';
  const active=users.filter(u=>u.is_active);
  const options=active.map(u=>{
@@ -48,6 +49,7 @@ async function refreshRoster(){
  const finished=sessions.filter(s=>s.status==='completed').slice(0,8);
  $('exitCompleted').innerHTML=finished.length?
   '<h4>最近の利用終了記録</h4>'+finished.map(s=>'<div class="exit-completed-row"><span>'+esc(userById(s.asset_user_id)?.name||'使用者')+'</span><small>'+esc(new Date(s.completed_at).toLocaleDateString('ja-JP'))+'</small></div>').join(''):'';
+ renderUnrecovered();
 }
 async function reload(){
  if(state.busy)return;
@@ -59,6 +61,24 @@ async function reload(){
   if(state.session?.id)await loadSession(state.session.id);
   toast('');
  }catch(e){console.error('exit roster',e);toast(err(e),true);}
+}
+function renderUnrecovered(){
+ const host=$('exitUnrecovered');if(!host)return;
+ const list=state.unrecovered;
+ if(!list.length){host.innerHTML='';return}
+ host.innerHTML='<h4>未回収品・継続調査リスト <span>'+list.length+'件</span></h4>'+
+  '<p class="exit-muted">回収不能として記録した備品です。現物が見つかった場合は現在の備品詳細と履歴を確認してください。</p>'+
+  '<div class="exit-unrecovered-list">'+list.map(i=>{
+    const session=state.sessions.find(s=>s.id===i.session_id);
+    const owner=userById(session?.asset_user_id);
+    const asset=state.assets.find(a=>a.id===i.asset_id);
+    const unresolved=asset && asset.assigned_user_id===session?.asset_user_id;
+    const stateLabel=unresolved?'未回収・要調査':'割当状況が変更されています';
+    return '<div class="exit-unrecovered-row"><div><strong>'+esc(i.asset_no_snapshot)+' '+esc(i.asset_name_snapshot)+'</strong>'+
+     '<small>退去者：'+esc(owner?.name||'登録済み使用者')+' ／ '+esc(stateLabel)+
+     '</small><p>'+esc(i.note||'調査メモなし')+'</p></div>'+
+     (asset?'<button type="button" class="secondary" data-exit-find="'+esc(i.asset_no_snapshot)+'">備品を確認</button>':'')+'</div>';
+  }).join('')+'</div>';
 }
 async function loadSession(sid){
  const c=db();
@@ -236,13 +256,24 @@ function init(){
  pane.innerHTML='<div class="panel exit-panel"><div class="panel-head"><div><h3>退去・回収チェック</h3><p class="exit-intro">退去者の備品をすべて確認し、返却・引継ぎ・回収不能を記録してから利用終了します。</p></div></div>'+
  '<div class="exit-picker"><label>対象の使用者<select id="exitUserSelect"><option>読み込み中…</option></select></label><button type="button" class="primary" id="exitStart">退去チェックを開始・再開</button></div>'+
  '<div id="exitMessage" class="exit-message" role="status" aria-live="polite"></div>'+
- '<div id="exitOngoing" class="exit-ongoing"></div><div id="exitSession" class="exit-session"></div><div id="exitCompleted" class="exit-completed"></div></div>';
+ '<div id="exitOngoing" class="exit-ongoing"></div><div id="exitSession" class="exit-session"></div><div id="exitUnrecovered" class="exit-unrecovered"></div><div id="exitCompleted" class="exit-completed"></div></div>';
  const after=$('workspaceAdminHistory')||grid;after.insertAdjacentElement('afterend',pane);
  pane.addEventListener('click',e=>{
   const resume=e.target.closest('[data-exit-resume]');if(resume){start(resume.dataset.exitResume);return}
   if(e.target.closest('#exitStart')){start($('exitUserSelect')?.value);return}
   if(e.target.closest('#exitReload')){reload();return}
   const save=e.target.closest('[data-exit-save]');if(save){saveItem(save.dataset.exitSave);return}
+  const find=e.target.closest('[data-exit-find]');
+  if(find){
+   const search=$('assetSearch'),status=$('assetStatus');
+   if(search&&status){
+     search.value=find.dataset.exitFind;status.value='';
+     document.querySelector('.nav-btn[data-page="assets"]')?.click();
+     status.dispatchEvent(new Event('change',{bubbles:true}));
+     search.dispatchEvent(new Event('input',{bubbles:true}));
+   }
+   return;
+  }
   if(e.target.closest('#exitFinalize'))finalize();
  });
  pane.addEventListener('change',e=>{
