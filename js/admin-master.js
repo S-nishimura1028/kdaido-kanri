@@ -37,7 +37,7 @@
         document.getElementById('appView')?.classList.add('hidden');
         document.getElementById('loginView')?.classList.remove('hidden');
         const err=document.getElementById('loginError');
-        if(err)err.textContent='このアプリは管理者アカウント専用です。一般社員はログインせず、QRコードから備品情報を確認してください。';
+        if(err)err.textContent='このアプリとQRからの備品情報表示は管理者ログインが必要です。管理者にお問い合わせください。';
       }
     }catch(e){console.warn('admin guard',e)}finally{guarding=false;}
   }
@@ -87,8 +87,8 @@
     if(document.getElementById('userAdmin'))return;
     const grid=document.querySelector('#adminPage .admin-grid');if(!grid)return;
     const panel=document.createElement('div');panel.className='panel user-master-panel';
-    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 実習生を登録</button></div>'+
-      '<p class="user-master-info">氏名・所属部署・居住場所・部屋番号をそれぞれ管理します。「まとめて編集」を押すと4項目がすぐ下に表示され、その場で一度に変更できます。備品の登録・詳細画面は従来どおりです。</p>'+
+    panel.innerHTML='<div class="panel-head"><h3>使用者マスタ</h3><button type="button" class="primary" id="addAssetUserBtn">＋ 使用者を登録</button></div>'+
+      '<p class="user-master-info">使用者の氏名・部署・居住場所・部屋番号をまとめて管理します。「情報を編集」で4項目を更新できます。編集内容はシールには印字されません。</p>'+
       '<div class="user-master-toolbar"><label>名前・部署・居住場所・部屋番号で検索<input id="userMasterSearch" placeholder="例：カイン／薄場寮／205" aria-label="使用者の検索"></label>'+
       '<label>所属部署<select id="userMasterDepartmentFilter"><option value="">すべての部署</option></select></label>'+
       '<label>居住場所<select id="userMasterLocationFilter"><option value="">すべての場所</option></select></label></div>'+
@@ -102,7 +102,7 @@
     const head=host?.closest('.panel')?.querySelector('.panel-head');
     if(!head||document.getElementById('addAdminAccountBtn'))return;
     const b=document.createElement('button');
-    b.type='button';b.id='addAdminAccountBtn';b.className='primary';b.textContent='＋ 管理者追加';
+    b.type='button';b.id='addAdminAccountBtn';b.className='primary';b.textContent='＋ 管理者を追加';
     head.appendChild(b);
   }
 
@@ -119,7 +119,7 @@
     document.getElementById('adminPasswordOverlay')?.remove();
     const overlay=document.createElement('div');overlay.id='adminPasswordOverlay';overlay.className='admin-create-overlay';
     const card=document.createElement('div');card.className='admin-create-card';
-    card.innerHTML=`<h3>管理者パスワード変更</h3><p><strong>${esc(target.name||'管理者')}</strong><br>${esc(target.email||'')}</p><div class="password-line"><label style="margin:0">新しいパスワード<input id="adminResetPassword" type="password" autocomplete="new-password" placeholder="8文字以上"></label><button type="button" class="secondary" id="generateResetPasswordBtn">自動生成</button></div><label style="margin-top:12px">確認入力<input id="adminResetPasswordConfirm" type="password" autocomplete="new-password" placeholder="もう一度入力"></label><div style="font-size:12px;color:var(--muted);margin-top:7px">変更後は新しいパスワードを本人へ安全な方法で伝えてください。</div><div id="adminResetError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminResetBtn">キャンセル</button><button type="button" class="primary" id="saveAdminResetBtn">パスワード変更</button></div>`;
+    card.innerHTML=`<h3>管理者パスワード変更</h3><p><strong>${esc(target.name||'管理者')}</strong><br>${esc(target.email||'')}</p><div class="password-line"><label style="margin:0">新しいパスワード<input id="adminResetPassword" type="password" autocomplete="new-password" placeholder="8文字以上"></label><button type="button" class="secondary" id="generateResetPasswordBtn">自動生成</button></div><label style="margin-top:12px">確認入力<input id="adminResetPasswordConfirm" type="password" autocomplete="new-password" placeholder="もう一度入力"></label><div style="font-size:12px;color:var(--muted);margin-top:7px">変更後は新しいパスワードを本人へ安全な方法で伝えてください。</div><div id="adminResetError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminResetBtn">キャンセル</button><button type="button" class="primary" id="saveAdminResetBtn">パスワードを変更</button></div>`;
     overlay.appendChild(card);document.body.appendChild(overlay);
     const password=card.querySelector('#adminResetPassword');
     const confirmPw=card.querySelector('#adminResetPasswordConfirm');
@@ -196,8 +196,8 @@
     const {data,error}=await c.from('profiles').select('id,name,email,role').eq('role','admin').order('name');
     if(error){host.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
     const rows=data||[];
-    host.innerHTML=`<div class="admin-account-note">管理者はこの画面から別の管理者アカウントを追加できます。一般社員はアカウントを作らず、QRコードから閲覧します。</div>`+
-      (rows.length?rows.map(x=>`<div class="master-row" data-profile-row="${x.id}"><span><strong>${esc(x.name||'名称未設定')}</strong><small class="admin-account-meta">${esc(x.email||'メール未設定')}</small></span><div class="master-actions">${x.role==='admin'?`<span class="badge use">管理者</span><button type="button" class="master-mini profile-name-edit" data-id="${x.id}" data-name="${esc(x.name||'')}">名前編集</button>${x.id!==currentId?`<button type="button" class="master-mini profile-password-reset" data-id="${x.id}" data-name="${esc(x.name||'')}" data-email="${esc(x.email||'')}">パスワード変更</button>`:''}`:`<span class="badge">旧権限: ${esc(x.role||'未設定')}</span><button type="button" class="master-mini promote profile-promote" data-id="${x.id}" data-name="${esc(x.name||x.email||'このアカウント')}">管理者にする</button>`}</div></div>`).join(''):'<div class="empty">アカウントはありません。</div>');
+    host.innerHTML=`<div class="admin-account-note">管理者アカウントを追加・管理できます。備品情報とQR読取後の詳細表示には、管理者ログインが必要です。一般社員用アカウントは作成しません。</div>`+
+      (rows.length?rows.map(x=>`<div class="master-row" data-profile-row="${x.id}"><span><strong>${esc(x.name||'名称未設定')}</strong><small class="admin-account-meta">${esc(x.email||'メール未設定')}</small></span><div class="master-actions">${x.role==='admin'?`<span class="badge use">管理者</span><button type="button" class="master-mini profile-name-edit" data-id="${x.id}" data-name="${esc(x.name||'')}">表示名を変更</button>${x.id!==currentId?`<button type="button" class="master-mini profile-password-reset" data-id="${x.id}" data-name="${esc(x.name||'')}" data-email="${esc(x.email||'')}">パスワードを変更</button>`:''}`:`<span class="badge">旧権限: ${esc(x.role||'未設定')}</span><button type="button" class="master-mini promote profile-promote" data-id="${x.id}" data-name="${esc(x.name||x.email||'このアカウント')}">管理者にする</button>`}</div></div>`).join(''):'<div class="empty">アカウントはありません。</div>');
   }
 
 
@@ -211,7 +211,7 @@
       return [g.name,g.department,g.location,g.room_number].some(s=>String(s||'').toLocaleLowerCase().includes(q));
     });
     const count=document.getElementById('userMasterCount');
-    if(count)count.textContent='表示中 '+matched.length+'名 / 登録中 '+userGroups.length+'名　｜　各行の「まとめて編集」で4項目を一度に変更できます。';
+    if(count)count.textContent='表示中 '+matched.length+'名 / 登録中 '+userGroups.length+'名　｜　各行の「情報を編集」から変更できます。';
     if(!matched.length){host.innerHTML='<div class="empty">該当する使用者がいません。</div>';return;}
     host.innerHTML='<div class="user-master-head"><span>実習生の名前</span><span>所属部署</span><span>居住場所</span><span>部屋番号</span><span>紐づく備品</span><span>操作</span></div>'+
       matched.map(({g,index})=>{
@@ -224,8 +224,8 @@
           <div class="user-master-cell" data-label="部屋番号">${value(g.room_number)}</div>
           <div class="user-master-cell" data-label="紐づく備品"><span class="user-admin-count">${g.items.length}件</span>${preview?`<div class="user-master-asset-detail">${preview}</div>`:''}</div>
           <div class="user-master-cell user-master-actions-cell" data-label="操作"><div class="master-actions">
-            <button type="button" class="master-mini user-master-edit" data-index="${index}" title="${esc(g.name)} の詳細編集">まとめて編集</button>
-            <button type="button" class="master-mini danger user-master-delete" data-index="${index}" title="${esc(g.name)} の削除">削除</button>
+            <button type="button" class="master-mini user-master-edit" data-index="${index}" title="${esc(g.name)} の情報を編集">情報を編集</button>
+            <button type="button" class="master-mini danger user-master-delete" data-index="${index}" title="${esc(g.name)} の登録を無効化">登録を無効化</button>
           </div></div></div>`;
       }).join('');
   }
@@ -357,7 +357,7 @@
     const {data,error}=await c.from(def.table).select('id,name,is_active').eq('is_active',true).order('name');
     if(error){host.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
     const filtered=(data||[]).filter(x=>def.table!=='categories'||!String(x.name||'').startsWith('__USER__:'));
-    host.innerHTML=filtered.length?filtered.map(x=>`<div class="master-row" data-master-id="${x.id}"><strong>${esc(x.name)}</strong><div class="master-actions"><button type="button" class="master-mini master-edit" data-table="${def.table}" data-id="${x.id}" data-name="${esc(x.name)}">編集</button><button type="button" class="master-mini danger master-delete" data-table="${def.table}" data-id="${x.id}" data-name="${esc(x.name)}">削除</button></div></div>`).join(''):'<div class="empty">登録なし</div>';
+    host.innerHTML=filtered.length?filtered.map(x=>`<div class="master-row" data-master-id="${x.id}"><strong>${esc(x.name)}</strong><div class="master-actions"><button type="button" class="master-mini master-edit" data-table="${def.table}" data-id="${x.id}" data-name="${esc(x.name)}">編集</button><button type="button" class="master-mini danger master-delete" data-table="${def.table}" data-id="${x.id}" data-name="${esc(x.name)}" title="選択肢から非表示にする">非表示</button></div></div>`).join(''):'<div class="empty">登録なし</div>';
   }
 
   function ensureAddButtons(){
@@ -406,7 +406,7 @@
       if(matches.length===1)group=matches[0];
     }
     if(group)openAssetUserEditor(group);
-    else alert('対象の使用者を特定できません。管理画面を再読み込みしてから、使用者マスタの「まとめて編集」を押してください。');
+    else alert('対象の使用者を特定できません。管理画面を再読み込みしてから、使用者マスタの「情報を編集」を押してください。');
   },true);
 
   document.addEventListener('click',async e=>{
@@ -428,7 +428,7 @@
         if(linked.error)throw linked.error;
         if(linked.data?.length){
           const examples=linked.data.map(a=>`${a.asset_no||'-'} ${a.name||''}`).join('、');
-          alert(`「${group.name}」は備品が割り当てられているため削除できません。\n先に備品一覧で使用者を変更・解除してください。\n対象例：${examples}`);
+          alert(`「${group.name}」は備品が割り当てられているため無効化できません。\n先に備品一覧で使用者を変更・解除してください。\n対象例：${examples}`);
           return;
         }
         // Legacy assets with only a text user_name also need a manual review.
@@ -440,10 +440,10 @@
           .limit(5);
         if(legacy.error)throw legacy.error;
         if(legacy.data?.length){
-          alert(`「${group.name}」と同じ名前の未紐づけ備品があります。\n誤って使用者を削除しないよう、備品一覧で使用者を確認してから削除してください。`);
+          alert(`「${group.name}」と同じ名前の未紐づけ備品があります。\n誤って使用者登録を無効化しないよう、備品一覧で使用者を確認してから削除してください。`);
           return;
         }
-        if(!confirm(`「${group.name}」（${group.department||'部署未設定'} / ${group.location||'場所未設定'}）を使用者マスタから削除しますか？\n備品・履歴は削除しません。後から復元できるよう、使用者データは無効化して保管します。`))return;
+        if(!confirm(`「${group.name}」（${group.department||'部署未設定'} / ${group.location||'場所未設定'}）の登録を無効化しますか？\n備品・履歴は削除しません。後から復元できるよう、使用者データは無効化して保管します。`))return;
         const {data,error}=await c.from('asset_users')
           .update({is_active:false,updated_at:new Date().toISOString()})
           .eq('id',group.id)
@@ -489,7 +489,7 @@
     }
     const del=e.target.closest('.master-delete');
     if(del){
-      if(!confirm(`「${del.dataset.name}」を削除しますか？\n既存の備品データは残し、新しい選択肢から非表示にします。`))return;
+      if(!confirm(`「${del.dataset.name}」を選択肢から非表示にしますか？\n既存の備品データは残ります。`))return;
       const c=db();const {error}=await c.from(del.dataset.table).update({is_active:false}).eq('id',del.dataset.id);
       if(error){alert('削除できませんでした: '+error.message);return;}reopenAdminAfterReload();return;
     }
