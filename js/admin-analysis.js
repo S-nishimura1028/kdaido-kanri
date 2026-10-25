@@ -1,12 +1,10 @@
 (function(){
   'use strict';
 
-  let client=null;
+  // Reuse the main authenticated client, avoiding independent auth sessions
+  // and duplicate GoTrue auto-refresh listeners.
   function db(){
-    if(client)return client;
-    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
-    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-    return client;
+    return window.DaidoQrBridge?.getClient?.()||null;
   }
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const statuses=['使用中','未使用','修理中','廃棄'];
