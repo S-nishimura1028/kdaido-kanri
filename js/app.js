@@ -426,6 +426,25 @@
     if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<500)break;
   }$('historyTable').innerHTML=rows.length?`<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${new Date(h.created_at||Date.now()).toLocaleString('ja-JP')}</td><td>${esc(h.asset_id||'-')}</td><td>${esc(h.action||h.event_type||'-')}</td><td>${esc(h.note||h.description||'-')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">履歴はありません。</div>';}
   async function loadAdmin(){const p=await db.from('profiles').select('id,name,email,role').eq('role','admin').order('name');$('profileTable').innerHTML=(p.data||[]).map(x=>`<div class="master-row"><span><strong>${esc(x.name||'名称未設定')}</strong><small> ${esc(x.email||'')}</small></span><span class="badge use">管理者</span></div>`).join('');[['categoryAdmin',categories],['locationAdmin',locations],['departmentAdmin',departments]].forEach(([id,list])=>$(id).innerHTML=list.map(x=>`<div class="master-row"><span>${esc(x.name)}</span></div>`).join(''));}
+  // Narrow bridge for QR operations: reuse the authenticated client and the
+  // existing render/refresh path instead of maintaining a competing cache.
+  window.DaidoQrBridge=Object.freeze({
+    getClient:()=>db,
+    refreshAsset:async id=>{
+      await loadMasters();
+      await loadAssets();
+      await loadDashboard();
+      await loadHistory();
+      const res=await db.from('assets').select('*').eq('id',id).eq('is_deleted',false).maybeSingle();
+      if(res.error)throw res.error;
+      if($('detailDialog').open)$('detailDialog').close();
+      if(res.data){
+        const index=assets.findIndex(a=>a.id===id);
+        if(index<0)assets.push(res.data);else assets[index]=res.data;
+        await showDetail(id);
+      }
+    }
+  });
   // Keep the dropdown current after edits to the dedicated user master.
   document.addEventListener('asset-user-master-updated',()=>{if(db)loadMasters().catch(e=>console.warn('master refresh',e));});
   window.addEventListener('DOMContentLoaded',()=>{
