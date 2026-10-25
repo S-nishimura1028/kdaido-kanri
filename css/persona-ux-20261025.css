@@ -1,0 +1,98 @@
+/* Persona-based usability refinement: phone, desk operator, inventory manager */
+#adminAnalysisPanel{min-width:0}
+#adminAnalysisPanel .analysis-type-box{min-width:0;overflow:visible}
+#adminAnalysisPanel .analysis-type-intro{font-size:13px;line-height:1.65;color:#4d7180;margin:0 0 13px}
+#adminAnalysisPanel .analysis-type-intro strong{color:#135b79}
+#adminAnalysisPanel .analysis-type-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:12px;align-items:end;margin-bottom:12px}
+#adminAnalysisPanel .analysis-type-toolbar label{display:flex;flex-direction:column;gap:6px;font-size:11.5px;font-weight:800;color:#4b6976;min-width:0}
+#adminAnalysisPanel .analysis-type-toolbar input,#adminAnalysisPanel .analysis-type-toolbar select{width:100%;min-width:0;min-height:46px;background:#fff;border:1px solid #c9dce2;border-radius:10px;color:#234d5f;font-size:14px;padding:9px 12px;line-height:1.4}
+#adminAnalysisPanel .analysis-type-toolbar input:focus-visible,#adminAnalysisPanel .analysis-type-toolbar select:focus-visible{outline:3px solid #8dc3da;outline-offset:1px}
+#adminAnalysisPanel .analysis-type-count{font-size:12px;font-weight:800;color:#44747e;margin:0 0 10px}
+#adminAnalysisPanel .analysis-type-desktop{width:100%;border:1px solid #e0e9ec;border-radius:12px;overflow:hidden}
+#adminAnalysisPanel .analysis-type-table{border-collapse:separate;border-spacing:0;width:100%;min-width:0;table-layout:fixed}
+#adminAnalysisPanel .analysis-type-table th,#adminAnalysisPanel .analysis-type-table td{font-size:12.5px;text-align:center;padding:7px 8px;border-bottom:1px solid #e7eff0;vertical-align:middle;color:#335c6d}
+#adminAnalysisPanel .analysis-type-table thead th{background:#eaf2f5;color:#295264;font-weight:850;position:sticky;top:0;z-index:2;white-space:nowrap;height:45px;border-bottom:2px solid #d4e5e9}
+#adminAnalysisPanel .analysis-type-table thead th:first-child{width:30%;left:auto;z-index:3;text-align:left;padding-left:16px}
+#adminAnalysisPanel .analysis-type-table tbody th.analysis-type-name{position:static;text-align:left;padding-left:16px;font-size:13px;font-weight:800;background:transparent;overflow-wrap:anywhere;color:#173f55}
+#adminAnalysisPanel .analysis-type-table tbody tr:nth-child(even){background:#f8fbfb}
+#adminAnalysisPanel .analysis-type-table tbody tr:hover{background:#eff8f8}
+#adminAnalysisPanel .analysis-type-table tbody tr:last-child>th,#adminAnalysisPanel .analysis-type-table tbody tr:last-child>td{border-bottom:0}
+#adminAnalysisPanel .analysis-type-table .analysis-available-cell{background:rgba(46,146,100,.045)}
+#adminAnalysisPanel .analysis-count-btn{min-height:41px;min-width:47px;border:1px solid transparent;border-radius:9px;background:#f0f6f9;color:#126c91;display:inline-flex;align-items:center;justify-content:center;gap:2px;font-weight:850;font-size:13px;line-height:1.3;text-decoration:none;padding:7px 9px;cursor:pointer}
+#adminAnalysisPanel .analysis-count-btn:hover{border-color:#9bc7d6;background:#e4f3fa}
+#adminAnalysisPanel .analysis-count-btn:focus-visible{outline:3px solid #2084b7;outline-offset:2px}
+#adminAnalysisPanel .analysis-available-cell .analysis-count-btn{color:#206c49;background:#eaf6ef}
+#adminAnalysisPanel .analysis-available-cell .analysis-count-btn:hover{background:#d9efe1;border-color:#80b998}
+#adminAnalysisPanel .analysis-count-btn.analysis-count-total{background:#eaf0f6;color:#254c6c}
+#adminAnalysisPanel .analysis-count-action{font-size:10px;font-weight:650;opacity:.7}
+#adminAnalysisPanel .analysis-count-zero{font-size:12px;color:#9aaab2}
+#adminAnalysisPanel .analysis-type-mobile{display:none}
+#adminAnalysisPanel [data-analysis-type-item][hidden]{display:none!important}
+#adminAnalysisPanel .analysis-type-empty{padding:24px 12px;text-align:center;font-size:13px;color:#5e7882;background:#f5f9fa;border-radius:12px}
+#adminAnalysisPanel .analysis-type-footnote{font-size:11px;color:#738994;line-height:1.65;margin:12px 0 0}
+#adminAnalysisPanel .analysis-box{min-width:0}
+#adminAnalysisPanel .analysis-recent-item{gap:7px;flex-wrap:wrap}
+#adminAnalysisPanel .analysis-row{min-width:0;grid-template-columns:minmax(80px,1.1fr) minmax(0,2fr) auto}
+#adminAnalysisPanel .analysis-row>span:first-child{overflow-wrap:anywhere}
+#workspaceDashboardShortcuts button{cursor:pointer}
+#workspaceDashboardShortcuts button:focus-visible{outline:3px solid #2383b4;outline-offset:3px}
+#assetsPage #workspaceAssetCount{overflow-wrap:anywhere}
+#assetsPage #workspaceResetFilters{min-height:43px;min-width:120px}
+#workspaceAdminTabs{scrollbar-width:thin;scrollbar-color:#9cbfc8 #f5f9fa}
+#workspaceAdminTabs button:focus-visible{outline:3px solid #2c9ac1;outline-offset:-3px}
+@media(max-width:1100px){
+ #adminAnalysisPanel .analysis-type-table th,#adminAnalysisPanel .analysis-type-table td{padding-left:4px;padding-right:4px;font-size:12px}
+ #adminAnalysisPanel .analysis-type-table thead th:first-child{width:27%}
+}
+@media(max-width:920px){
+ #adminAnalysisPanel .analysis-type-desktop{display:none}
+ #adminAnalysisPanel .analysis-type-mobile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ #adminAnalysisPanel .analysis-type-item-card{border:1px solid #d9e7e8;background:#fff;border-radius:14px;padding:15px;box-shadow:0 3px 12px rgba(17,64,88,.045);min-width:0}
+ #adminAnalysisPanel .analysis-type-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px;padding-bottom:12px;border-bottom:1px solid #e4ecee}
+ #adminAnalysisPanel .analysis-type-card-header h5{margin:0;min-width:0;flex:1;font-size:16px;line-height:1.45;font-weight:850;color:#17425b;overflow-wrap:anywhere}
+ #adminAnalysisPanel .analysis-type-card-total{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none}
+ #adminAnalysisPanel .analysis-type-card-total>span{font-size:10px;font-weight:760;color:#708d9a}
+ #adminAnalysisPanel .analysis-type-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #adminAnalysisPanel .analysis-type-card-stat{display:flex;align-items:center;justify-content:space-between;gap:7px;min-width:0;min-height:65px;border:1px solid #e3ecef;border-radius:10px;background:#f8fbfc;padding:7px 9px}
+ #adminAnalysisPanel .analysis-type-card-stat>span{font-size:11.5px;white-space:nowrap;font-weight:800;color:#486774}
+ #adminAnalysisPanel .analysis-state-available{background:#f0f8f3;border-color:#d7e9dd}
+ #adminAnalysisPanel .analysis-state-inuse{background:#f2f8fb}
+ #adminAnalysisPanel .analysis-state-repair{background:#fff8ed;border-color:#f1e0be}
+ #adminAnalysisPanel .analysis-state-disposed{background:#fbf6f5}
+ #adminAnalysisPanel .analysis-type-card-stat .analysis-count-btn{min-width:43px;min-height:44px;font-size:14px;padding:7px}
+ #adminAnalysisPanel .analysis-type-card-stat.analysis-state-available .analysis-count-btn{background:#deeee4;color:#236b49}
+ #adminAnalysisPanel .analysis-type-card-stat.analysis-state-repair .analysis-count-btn{background:#fbebcf;color:#855913}
+ #adminAnalysisPanel .analysis-type-card-stat.analysis-state-disposed .analysis-count-btn{background:#f7e6e2;color:#8c5447}
+ #adminAnalysisPanel .analysis-type-card-stat .analysis-count-zero{margin:auto 11px auto auto}
+}
+@media(max-width:650px){
+ #adminAnalysisPanel .analysis-type-toolbar{grid-template-columns:minmax(0,1fr);gap:9px}
+ #adminAnalysisPanel .analysis-type-toolbar label{font-size:12px}
+ #adminAnalysisPanel .analysis-type-toolbar input,#adminAnalysisPanel .analysis-type-toolbar select{min-height:48px;font-size:16px}
+ #adminAnalysisPanel .analysis-type-mobile{grid-template-columns:minmax(0,1fr);gap:10px}
+ #adminAnalysisPanel .analysis-type-item-card{padding:13px}
+ #adminAnalysisPanel .analysis-type-card-header h5{font-size:16px}
+ #adminAnalysisPanel .analysis-type-card-grid{gap:8px}
+ #adminAnalysisPanel .analysis-type-card-stat{min-height:62px}
+ #adminAnalysisPanel .analysis-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+ #adminAnalysisPanel .analysis-summary .analysis-card{min-height:72px;padding:12px}
+ #adminAnalysisPanel .analysis-summary .analysis-card:first-child{grid-column:1/-1;background:#eef6fa!important}
+ #adminAnalysisPanel .analysis-summary .analysis-card strong{font-size:21px}
+ #adminAnalysisPanel .analysis-grid{grid-template-columns:minmax(0,1fr)}
+ #adminAnalysisPanel .analysis-box{padding:12px}
+ #adminAnalysisPanel .analysis-row{grid-template-columns:minmax(72px,1fr) minmax(30px,1.2fr) auto;font-size:11px;gap:6px}
+ #workspaceDashboardShortcuts button{min-height:70px}
+ #workspaceDashboardShortcuts button strong{font-size:14px}
+ #workspaceAdminTabs{display:flex;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding-bottom:3px}
+ #workspaceAdminTabs [data-admin-tab]{min-height:48px;scroll-snap-align:start;flex:0 0 auto}
+ #assetsPage #workspaceAssetCount{font-size:14px}
+ #assetsPage #workspaceResetFilters{display:inline-flex;align-items:center;justify-content:center;margin:4px 0;padding:8px 12px}
+}
+@media(max-width:370px){
+ #adminAnalysisPanel .analysis-type-card-stat>span{font-size:11px}
+ #adminAnalysisPanel .analysis-type-card-stat{padding:7px}
+ #adminAnalysisPanel .analysis-type-card-stat .analysis-count-btn{min-width:40px}
+}
+@media(prefers-reduced-motion:reduce){
+ #workspaceDashboardShortcuts button{transition:none!important}
+}
