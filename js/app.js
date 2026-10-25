@@ -208,8 +208,16 @@
     refreshUserOptions();
   }
   async function loadDashboard(){
-    const r=await db.from('assets').select('status,quantity,photo_path').eq('is_deleted',false);if(r.error)throw r.error;
-    const rows=r.data||[];$('statTotal').textContent=rows.reduce((n,a)=>n+Number(a.quantity||0),0);$('statAvailable').textContent=rows.filter(a=>a.status==='未使用').reduce((n,a)=>n+Number(a.quantity||0),0);$('statUse').textContent=rows.filter(a=>a.status==='使用中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statRepair').textContent=rows.filter(a=>a.status==='修理中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statDisposed').textContent=rows.filter(a=>a.status==='廃棄').reduce((n,a)=>n+Number(a.quantity||0),0); $('statPhoto').textContent=rows.filter(a=>a.photo_path).length;
+    // Fetch every page: a dashboard that silently stops at 1,000 assets
+    // would be unsafe for procurement and inventory decisions.
+    const rows=[];
+    const request=db.from('assets').select('status,quantity,photo_path').eq('is_deleted',false).order('id');
+    for(let offset=0;;offset+=500){
+      const r=await request.range(offset,offset+499);
+      if(r.error)throw r.error;
+      rows.push(...(r.data||[]));
+      if((r.data||[]).length<500)break;
+    }$('statTotal').textContent=rows.reduce((n,a)=>n+Number(a.quantity||0),0);$('statAvailable').textContent=rows.filter(a=>a.status==='未使用').reduce((n,a)=>n+Number(a.quantity||0),0);$('statUse').textContent=rows.filter(a=>a.status==='使用中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statRepair').textContent=rows.filter(a=>a.status==='修理中').reduce((n,a)=>n+Number(a.quantity||0),0);$('statDisposed').textContent=rows.filter(a=>a.status==='廃棄').reduce((n,a)=>n+Number(a.quantity||0),0); $('statPhoto').textContent=rows.filter(a=>a.photo_path).length;
     const recent=await db.from('assets').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(5);if(recent.error)throw recent.error;renderAssetsTable(recent.data||[],'recentAssets',false);
   }
   let assetLoadSequence=0;
