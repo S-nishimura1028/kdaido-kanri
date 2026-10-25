@@ -196,7 +196,7 @@ function renderAdminHistory(){
   var link=(a?.number||no)&&a?
     '<button type="button" class="workspace-history-link" data-asset-search="'+esc(no||a.number)+'">'+esc(label)+'</button>':
     esc(label);
-  return '<tr><td data-label="日時">'+esc(r.date)+'</td><td data-label="備品">'+link+'</td><td><span class="badge '+actionClass+'">'+esc(r.action)+'</span></td><td>'+esc(r.desc)+'</td></tr>';
+  return '<tr><td data-label="日時">'+esc(r.date)+'</td><td data-label="備品">'+link+'</td><td data-label="操作"><span class="badge '+actionClass+'">'+esc(r.action)+'</span></td><td data-label="内容">'+esc(r.desc)+'</td></tr>';
  }).join('')+'</tbody></table>':'<div class="workspace-list-empty">該当する履歴はありません。</div>';
  $('workspaceHistoryMore').classList.toggle('hidden',shown.length>=filtered.length);
 }
