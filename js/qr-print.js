@@ -41,7 +41,8 @@
     btn.type='button';
     btn.id='qrPrintBtn';
     btn.className='primary';
-    btn.textContent='このQRを印刷';
+    btn.textContent='この備品のQRシールを印刷';
+    btn.title='A4・27面のラベル用紙に印刷します';
     btn.style.minHeight='46px';
     btn.addEventListener('click',async function(){
       const err=document.getElementById('qrError');
@@ -57,7 +58,7 @@
 
     const hint=document.createElement('div');
     hint.style.cssText='width:100%;font-size:11px;color:#64748b;margin-top:2px';
-    hint.textContent='複数印刷は備品一覧でチェックして「QRまとめ印刷」を使います。インクファクトリー LBLA4-WPG-27（A4・27面）用です。';
+    hint.textContent='複数枚の印刷は備品一覧で対象を選び「QRシールを一括印刷」を押してください。対応用紙：LBLA4-WPG-27（A4・27面）。';
 
     wrap.appendChild(btn);
     wrap.appendChild(hint);
@@ -89,7 +90,8 @@
       th.style.cssText='width:58px;min-width:58px;text-align:center';
       const all=document.createElement('input');
       all.type='checkbox';
-      all.title='すべて選択';
+      all.title='この一覧に表示中の備品をすべて印刷対象にする';
+      all.setAttribute('aria-label','一覧の備品をすべてQR印刷対象にする');
       all.style.cssText='width:24px;height:24px;cursor:pointer;vertical-align:middle';
       all.addEventListener('click',e=>e.stopPropagation());
       all.addEventListener('change',()=>{
@@ -116,6 +118,7 @@
       const cells=row.querySelectorAll('td');
       cb.dataset.name=(cells[nameIndex>=0?nameIndex-offset:1]?.textContent||'備品').trim();
       cb.dataset.assetNo=(cells[noIndex>=0?noIndex-offset:0]?.textContent||'').trim();
+      cb.setAttribute('aria-label',`${cb.dataset.assetNo||''} ${cb.dataset.name||''} をQRシール印刷対象にする`);
       cb.addEventListener('click',e=>e.stopPropagation());
       cb.addEventListener('change',updateBatchButton);
       td.appendChild(cb);
@@ -136,7 +139,7 @@
     bar.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:0 0 14px;padding:10px 12px;background:#f8fbfd;border:1px solid #dbe7ee;border-radius:12px';
 
     const note=document.createElement('div');
-    note.textContent='印刷する備品にチェックを入れてください';
+    note.textContent='印刷対象を選択してください（カード・一覧表どちらでも選択できます）';
     note.style.cssText='margin-right:auto;font-size:13px;color:#64748b;font-weight:600';
 
     const btn=document.createElement('button');
@@ -144,7 +147,7 @@
     btn.id='qrBatchPrintBtn';
     btn.className='primary';
     btn.style.cssText='min-height:48px;padding:0 20px;font-weight:800';
-    btn.textContent='QRまとめ印刷';
+    btn.textContent='QRシールを一括印刷';
     btn.addEventListener('click',printSelectedAssets);
 
     bar.append(note,btn);
@@ -155,7 +158,9 @@
     const btn=document.getElementById('qrBatchPrintBtn');
     if(!btn) return;
     const n=document.querySelectorAll('#assetTable .qr-row-check:checked').length;
-    btn.textContent=n?`QRまとめ印刷（${n}件）`:'QRまとめ印刷';
+    btn.textContent=n?`QRシールを一括印刷（${n}件）`:'QRシールを一括印刷';
+    btn.disabled=n===0;
+    btn.title=n?`選択中の${n}件をA4・27面のシール用紙に印刷します`:'印刷したい備品にチェックを入れてください';
   }
 
   function chooseStartPosition(){
