@@ -142,12 +142,7 @@ function initShortcuts(){
  var bar=document.createElement('div');bar.id='workspaceDashboardShortcuts';bar.className='workspace-dashboard-shortcuts';
  bar.innerHTML='<button type="button" data-shortcut="available"><strong>✓ 使える備品を探す</strong><small>未使用の備品をすぐ確認</small></button><button type="button" data-shortcut="analysis"><strong>▥ 種類別の状況を見る</strong><small>備品分析へ移動</small></button><button type="button" data-shortcut="new"><strong>＋ 備品を登録</strong><small>入力ガイド付きで登録</small></button>';
  p.insertBefore(bar,p.querySelector('.cards'));
- bar.addEventListener('click',ev=>{
-  var key=ev.target.closest('[data-shortcut]')?.dataset.shortcut;
-  if(key==='available'){$('.nav-btn[data-page="assets"]')?.click();pickStatus('未使用')}
-  if(key==='analysis'){$('.nav-btn[data-page="admin"]')?.click();setAdminTab('analysis')}
-  if(key==='new')$('newAssetBtn')?.click();
- });
+ // Navigation is handled centrally by app.js, including newly inserted cards.
 }
 function getHistory(){
  var t=$('historyTable')?.querySelector('table');
