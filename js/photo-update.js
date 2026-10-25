@@ -123,7 +123,8 @@
     const actions=document.querySelector('#assetDetail .dialog-actions');
     if(!detail||!detail.open||!actions||document.getElementById('employeePhotoUpdateBtn'))return;
     const qr=document.getElementById('qrBtn');
-    const btn=document.createElement('button');btn.type='button';btn.id='employeePhotoUpdateBtn';btn.className='secondary';btn.textContent='写真更新';btn.style.minHeight='48px';
+    const btn=document.createElement('button');btn.type='button';btn.id='employeePhotoUpdateBtn';btn.className='secondary';btn.textContent='写真を更新';
+    btn.title='外観写真やメーカーラベル写真を更新します';btn.style.minHeight='48px';
     btn.onclick=()=>openPhotoDialog();actions.insertBefore(btn,qr||null);
   }
 
