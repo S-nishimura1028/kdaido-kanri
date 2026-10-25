@@ -86,7 +86,7 @@
       const {error}=await db.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPassword').value});
       if(error) throw error;
     }catch(err){console.error(err);showError(err.message||'ログインに失敗しました。');}
-    finally{btn.disabled=false;btn.textContent='ログイン';}
+    finally{btn.disabled=false;btn.textContent='管理者ログイン';}
   });
   $('logoutBtn').onclick=()=>db.auth.signOut();
   $('mobileLogoutBtn').onclick=()=>db.auth.signOut();
@@ -137,7 +137,7 @@
     renderAssetsTable(assets,'assetTable',true);
     openAssetFromUrlOnce();
   }
-  function renderAssetsTable(rows,target,actions){if(!rows.length){$(target).innerHTML='<div class="empty">該当する備品がありません。</div>';return}$(target).innerHTML=`<table><thead><tr><th>備品番号</th><th>備品名</th><th>カテゴリ</th><th>保管場所</th><th>数量</th><th>状態</th>${actions?'<th>操作</th>':''}</tr></thead><tbody>${rows.map(a=>`<tr class="clickable" data-id="${a.id}"><td>${esc(a.asset_no)}</td><td>${esc(a.name)}</td><td>${esc(a.category)}</td><td>${esc(a.location||'-')}</td><td>${a.quantity}${esc(a.unit)}</td><td><span class="badge ${statusClass(a.status)}">${esc(a.status)}</span></td>${actions?`<td>${isManager()?`<button class="secondary edit-asset" data-id="${a.id}">編集</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table>`;$(target).querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('.edit-asset'))return;showDetail(tr.dataset.id)});$(target).querySelectorAll('.edit-asset').forEach(b=>b.onclick=e=>{e.stopPropagation();openAssetForm(b.dataset.id)});}
+  function renderAssetsTable(rows,target,actions){if(!rows.length){$(target).innerHTML='<div class="empty">該当する備品がありません。</div>';return}$(target).innerHTML=`<table><thead><tr><th>備品番号</th><th>備品名</th><th>カテゴリ</th><th>保管場所</th><th>数量</th><th>状態</th>${actions?'<th>操作</th>':''}</tr></thead><tbody>${rows.map(a=>`<tr class="clickable" data-id="${a.id}"><td>${esc(a.asset_no)}</td><td>${esc(a.name)}</td><td>${esc(a.category)}</td><td>${esc(a.location||'-')}</td><td>${a.quantity}${esc(a.unit)}</td><td><span class="badge ${statusClass(a.status)}">${esc(a.status)}</span></td>${actions?`<td>${isManager()?`<button class="secondary edit-asset" data-id="${a.id}" aria-label="${esc(a.asset_no)} ${esc(a.name)} の情報を編集">情報を編集</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table>`;$(target).querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('.edit-asset'))return;showDetail(tr.dataset.id)});$(target).querySelectorAll('.edit-asset').forEach(b=>b.onclick=e=>{e.stopPropagation();openAssetForm(b.dataset.id)});}
 
   async function signedPhotoUrl(path){
     if(!path)return null;
@@ -230,7 +230,7 @@
     $('acquisitionMethod').value='';
     if(id){
       const a=assets.find(x=>x.id===id);if(!a)return;
-      $('assetDialogTitle').textContent='備品編集';
+      $('assetDialogTitle').textContent='備品情報を編集';
       $('assetId').value=a.id;$('assetNo').value=a.asset_no;$('assetName').value=a.name;
       $('assetCategoryForm').value=a.category_id||'';$('manufacturer').value=a.manufacturer||'';
       $('model').value=a.model||'';$('purchaseDate').value=a.purchase_date||'';
@@ -253,7 +253,8 @@
       $('quantity').value=a.quantity;$('unit').value=a.unit||'個';
       $('statusForm').value=a.status;$('note').value=parseUserNote(a.note||a.notes);
       setPhotoPreview(a.photo_path);setLabelPhotoPreview(a.label_photo_path);
-    }else $('assetDialogTitle').textContent='備品登録';
+    }else $('assetDialogTitle').textContent='新しい備品を登録';
+    $('saveAssetBtn').textContent=id?'変更を保存':'備品を登録';
     $('assetFormError').textContent='';$('assetDialog').showModal();
   }
   $('newAssetBtn').onclick=()=>openAssetForm();
@@ -263,7 +264,7 @@
     if(assetFormSaving)return;
     assetFormSaving=true;
     const saveButton=$('saveAssetBtn');
-    if(saveButton){saveButton.disabled=true;saveButton.textContent='保存中…';}
+    if(saveButton){saveButton.disabled=true;saveButton.textContent='保存しています…';}
     $('assetFormError').textContent='';
     const id=$('assetId').value||null,cat=categories.find(x=>x.id===$('assetCategoryForm').value),loc=locations.find(x=>x.id===$('locationForm').value),dep=departments.find(x=>x.id===$('departmentForm').value),selectedUserId=$('currentUserId').value,user=assetUsers.find(x=>x.id===selectedUserId),legacyOption=selectedUserId==='legacy' ? $('currentUserId').selectedOptions[0] : null,legacyName=legacyOption?.dataset.name||null,legacyId=legacyOption?.dataset.masterId||null;
     const payload={asset_no:id?($('assetNo').value.trim()||null):null,name:$('assetName').value.trim(),category:cat?.name||'その他',category_id:cat?.id||null,manufacturer:$('manufacturer').value.trim()||null,model:$('model').value.trim()||null,purchase_date:$('purchaseDate').value||null,purchase_price:$('purchasePrice').value?Number($('purchasePrice').value):null,location:loc?.name||null,location_id:loc?.id||null,department:dep?.name||null,department_id:dep?.id||null,quantity:Number($('quantity').value),unit:$('unit').value.trim()||'個',status:$('statusForm').value,assigned_user_id:user?.id||legacyId||null,user_name:user?.name||legacyName||null,acquisition_method:$('acquisitionMethod').value.trim()||null,note:$('note').value.trim()||null};
@@ -325,7 +326,7 @@
         (err.message||'保存に失敗しました。');
     }finally{
       assetFormSaving=false;
-      if(saveButton){saveButton.disabled=false;saveButton.textContent='保存';}
+      if(saveButton){saveButton.disabled=false;saveButton.textContent=$('assetId').value?'変更を保存':'備品を登録';}
     }
   });
   async function showDetail(id){
@@ -337,7 +338,7 @@
         <div id="detailLabelPhotoWrap" class="hidden"><small style="display:block;margin-bottom:5px;color:var(--muted);font-weight:700">ラベル・型番</small><img id="detailLabelPhoto" alt="${esc(a.name)}のラベル写真" style="width:100%;height:190px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:#f8fafc"></div>
       </div>
       <div class="detail-grid">${rows.map(x=>`<div class="detail-item"><small>${esc(x[0])}</small>${esc(x[1])}</div>`).join('')}</div>
-      <div class="dialog-actions">${isManager()?`<button type="button" class="primary" id="detailEditBtn">編集</button>`:''}<button type="button" class="secondary" id="qrBtn" style="min-height:48px;position:relative;z-index:5">QR表示</button></div>
+      <div class="dialog-actions">${isManager()?`<button type="button" class="primary" id="detailEditBtn">情報を編集</button>`:''}<button type="button" class="secondary" id="qrBtn" style="min-height:48px;position:relative;z-index:5">QRコードを表示</button></div>
       <div id="qrArea" class="hidden" style="margin-top:14px;text-align:center;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff">
         <div style="font-weight:700;margin-bottom:8px">${esc(a.asset_no)} / ${esc(a.name)}</div>
         <canvas id="qrCanvas" style="max-width:100%"></canvas>
