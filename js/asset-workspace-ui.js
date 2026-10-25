@@ -24,7 +24,7 @@ function assetGlyph(name){
 }
 function updateClearControl(){
  var b=$('workspaceResetFilters');if(!b)return;
- var on=Boolean($('assetSearch')?.value.trim()||$('assetStatus')?.value||$('assetCategory')?.value);
+ var on=Boolean(window.DaidoAnalysisFilter?.ids||$('assetSearch')?.value.trim()||$('assetStatus')?.value||$('assetCategory')?.value);
  b.classList.toggle('hidden',!on);
 }
 
@@ -51,7 +51,7 @@ function setView(mode){
 function queueCards(){if(cardFrame)return;cardFrame=requestAnimationFrame(()=>{cardFrame=0;renderCards()})}
 function renderCards(){
  var table=$('assetTable')?.querySelector('table'),host=$('assetCardGrid');if(!host)return;
- if(!table){host.innerHTML='<div class="workspace-list-empty">該当する備品はありません。</div>';if($('workspaceAssetCount'))$('workspaceAssetCount').textContent='検索結果 0件';return}
+ if(!table){host.innerHTML='<div class="workspace-list-empty">該当する備品はありません。</div>';if($('workspaceAssetCount'))$('workspaceAssetCount').textContent=(window.DaidoAnalysisFilter?.label?'種類：'+window.DaidoAnalysisFilter.label+'｜':'')+'検索結果 0件';return}
  var headings=[...table.querySelectorAll('thead th')].map(x=>x.textContent.trim());
  var rows=[...table.querySelectorAll('tbody tr[data-id]')];
  rows.forEach(row=>{
@@ -67,7 +67,7 @@ function renderCards(){
   });
  });
  var cell=(row,name)=>{var i=headings.indexOf(name);return i<0?'':row.querySelectorAll('td')[i]?.textContent.trim()||''};
- if($('workspaceAssetCount'))$('workspaceAssetCount').textContent='検索結果 '+rows.length.toLocaleString('ja-JP')+'件';
+ if($('workspaceAssetCount'))$('workspaceAssetCount').textContent=(window.DaidoAnalysisFilter?.label?'種類：'+window.DaidoAnalysisFilter.label+'｜':'')+'検索結果 '+rows.length.toLocaleString('ja-JP')+'件';
  host.innerHTML=rows.map(row=>{
   var id=esc(row.dataset.id),no=cell(row,'備品番号'),name=cell(row,'備品名');
   var status=cell(row,'状態'),location=cell(row,'保管場所'),category=cell(row,'カテゴリ'),amount=cell(row,'数量');
@@ -103,6 +103,7 @@ function initAssets(){
  head.addEventListener('click',ev=>{
   var reset=ev.target.closest('#workspaceResetFilters');
   if(reset){
+   window.DaidoAnalysisFilter=null;
    $('assetSearch').value='';$('assetCategory').value='';
    pickStatus('');$('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
    updateClearControl();return;
