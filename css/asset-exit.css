@@ -80,3 +80,48 @@
 .exit-unrecovered-row p{font-size:12px;color:#785e43;margin:8px 0 0;line-height:1.6;overflow-wrap:anywhere}
 .exit-unrecovered-row button{min-height:41px;padding:8px 13px;font-size:12px}
 @media(max-width:600px){.exit-unrecovered-row button{width:100%}}
+
+/* Follow-up recovery and completed-session history. */
+.exit-recovery-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.exit-recovery-actions button{min-height:43px;padding:9px 13px;font-size:12px;font-weight:800;line-height:1.4}
+.exit-recovered-row{border-color:#cce6d8;background:#f5fbf8}
+.exit-recovered-details{margin-top:16px;border:1px solid #dce9e3;background:#f8fbf9;border-radius:12px;padding:12px 14px}
+.exit-recovered-details summary{cursor:pointer;font-size:13px;font-weight:800;color:#367255;min-height:30px;padding-top:3px}
+.exit-recovered-details .exit-unrecovered-list{margin-top:12px}
+.exit-recovery-dialog{width:min(570px,calc(100vw - 16px));max-height:90vh;overflow-y:auto}
+.exit-recovery-dialog .dialog-card{padding:21px}
+.exit-recovery-dialog .dialog-head h3{font-size:19px}
+.exit-recovery-dialog label:not(.exit-check){display:flex;flex-direction:column;gap:7px;margin:13px 0;font-size:13px;font-weight:760;color:#31596c}
+.exit-recovery-dialog label select{width:100%;min-height:47px;font-size:14px}
+.exit-recovery-dialog label textarea{width:100%;min-height:90px;font-size:14px;line-height:1.6;resize:vertical}
+.exit-recovery-dialog .exit-recovery-asset{background:#eaf5f7;border:1px solid #d4e7eb;padding:13px;border-radius:10px;font-size:14px;font-weight:850;color:#1d506d;overflow-wrap:anywhere}
+.exit-recovery-dialog .exit-check{display:flex;flex-direction:row;align-items:flex-start;gap:10px;background:#f2f9f4;border:1px solid #d7e8dc;padding:12px;border-radius:10px;font-size:13px;font-weight:780;color:#356d4a;cursor:pointer}
+.exit-recovery-dialog .exit-check input{width:23px!important;height:23px!important;min-height:23px;accent-color:#258762}
+.exit-recovery-dialog .dialog-actions{margin-top:14px;padding-top:13px;border-top:1px solid #e1eaec;display:flex;gap:10px;flex-wrap:wrap}
+.exit-recovery-dialog .dialog-actions button{min-height:46px;flex:1 1 160px;font-weight:820}
+.exit-recovery-dialog .error:not(:empty){padding:11px;border:1px solid #e6bfb5;background:#fff4f1;color:#a24f43;border-radius:9px;font-size:12px;line-height:1.5}
+.exit-history-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.exit-history-head h4{margin:0;font-size:15px;font-weight:850;color:#274f67}
+.exit-history-head small{font-size:11px;font-weight:700;color:#799098}
+.exit-history-list{display:grid;gap:6px}
+.exit-history-row{border:1px solid #dce9eb;border-radius:11px;padding:12px 14px;background:white;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;min-height:55px}
+.exit-history-row:hover{background:#f1f8fa;border-color:#b7d6dc}
+.exit-history-row strong{font-size:13px;color:#214c64;font-weight:820}
+.exit-history-row small{display:block;font-size:11px;color:#7c9298;margin-top:3px}
+.exit-history-chevron{font-size:12px;font-weight:800;color:#207397;white-space:nowrap}
+.exit-history-detail{margin-top:14px;background:#f8fbfb;border:1px solid #dce9ea;border-radius:13px;padding:17px}
+.exit-history-detail-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.exit-history-detail-head h5{margin:0;font-size:15px;font-weight:850;color:#21516b}
+.exit-history-detail-head button{min-height:38px;font-size:12px}
+.exit-history-summary{font-size:12px;font-weight:760;background:#e9f3f6;border-radius:9px;padding:11px;line-height:1.7;color:#285b6f}
+.exit-history-item{background:#fff;border:1px solid #e0ebec;border-radius:10px;margin-top:9px;padding:12px 13px}
+.exit-history-item strong{display:block;font-size:13px;font-weight:820;color:#244d61;margin-bottom:7px;overflow-wrap:anywhere}
+.exit-history-item .exit-badge{display:inline-block}
+.exit-history-item p{font-size:12px;color:#647f86;line-height:1.6;margin:6px 0 0;overflow-wrap:anywhere}
+@media(max-width:600px){
+ .exit-recovery-actions{width:100%}
+ .exit-recovery-actions button{flex:1 1 125px}
+ .exit-recovery-dialog .dialog-card{padding:16px}
+ .exit-history-detail{padding:12px}
+ .exit-history-row{padding:11px}
+}
