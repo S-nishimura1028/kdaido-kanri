@@ -113,7 +113,7 @@
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
   $('mobileMenu').onclick=()=>document.querySelector('.sidebar').classList.toggle('open');
   function go(page){
-    const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理・履歴'};
+    const titles={dashboard:'ダッシュボード',assets:'備品一覧',roomsDemo:'部屋管理（デモ）',history:'履歴',admin:'管理・履歴'};
     if(!titles[page]||!$(page+'Page'))return;
     document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
     $(page+'Page').classList.remove('hidden');
