@@ -194,14 +194,15 @@ function renderAdminHistory(){
  $('workspaceHistoryMore').classList.toggle('hidden',shown.length>=filtered.length);
 }
 function setAdminTab(tab){
- adminTab=['analysis','users','settings','history'].includes(tab)?tab:'analysis';
+ adminTab=['analysis','users','settings','history','exit'].includes(tab)?tab:'analysis';
  document.querySelectorAll('.workspace-tab[data-admin-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.adminTab===adminTab)));
  applyAdminPanels();
  if(adminTab==='history'){renderAdminHistory();lookupAssets()}
+ if(adminTab==='exit')window.DaidoExit?.show();else window.DaidoExit?.hide();
 }
 function applyAdminPanels(){
  var grid=$('adminPage')?.querySelector('.admin-grid');if(!grid)return;
- grid.style.display=adminTab==='history'?'none':'grid';
+ grid.style.display=(adminTab==='history'||adminTab==='exit')?'none':'grid';
  $('workspaceAdminHistory')?.classList.toggle('hidden',adminTab!=='history');
  [...grid.children].forEach(p=>{
   if(!p.classList.contains('panel'))return;
@@ -213,7 +214,7 @@ function initAdmin(){
  var grid=$('adminPage')?.querySelector('.admin-grid');if(!grid||$('workspaceAdminTabs'))return;
  var tabs=document.createElement('div');tabs.id='workspaceAdminTabs';tabs.className='workspace-tabs';
  tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','管理画面メニュー');
- tabs.innerHTML=[['analysis','備品分析'],['users','使用者管理'],['settings','管理設定'],['history','変更履歴']].map(x=>'<button type="button" role="tab" class="workspace-tab" data-admin-tab="'+x[0]+'" aria-selected="false">'+x[1]+'</button>').join('');
+ tabs.innerHTML=[['analysis','備品分析'],['users','使用者管理'],['exit','退去・回収'],['settings','管理設定'],['history','変更履歴']].map(x=>'<button type="button" role="tab" class="workspace-tab" data-admin-tab="'+x[0]+'" aria-selected="false">'+x[1]+'</button>').join('');
  grid.insertAdjacentElement('beforebegin',tabs);
  tabs.addEventListener('click',ev=>{var b=ev.target.closest('[data-admin-tab]');if(b)setAdminTab(b.dataset.adminTab)});
  tabs.addEventListener('keydown',ev=>{
