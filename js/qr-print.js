@@ -188,7 +188,7 @@
       const allSelected=checks.length>0&&checks.every(c=>c.checked);
       const selectLabel=allSelected?'選択を解除':'表示中をすべて選択';
       if(selectBtn.textContent!==selectLabel)selectBtn.textContent=selectLabel;
-      if(selectBtn.disabled===(checks.length>0))selectBtn.disabled=checks.length===0;
+      if(selectBtn.disabled!==(checks.length===0))selectBtn.disabled=checks.length===0;
     }
   }
 
