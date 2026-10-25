@@ -16,8 +16,8 @@ const models=[
 ];
 const rooms=sections.flatMap(section=>section.rooms.map((code,index)=>({
   id:code,floor:section.floor,
-  occupant:(code==='北側和室'||code==='205')?'未登録（架空）':'デモ入居者（架空）',
-  occupancy:(code==='北側和室'||code==='205')?'空室（仮）':'入居中（仮）',
+  occupant:(code==='北側和室')?'未登録（架空）':'デモ入居者（架空）',
+  occupancy:(code==='北側和室')?'空室（仮）':'入居中（仮）',
   department:section.floor==='和室'?'共用想定（仮）':'サンプル部署（仮）',
   capacity:section.floor==='和室'?'複数人（想定）':'1名（想定）',
   sampleIndex:sections.findIndex(s=>s.floor===section.floor)*6+index
@@ -210,7 +210,11 @@ function init(){
     const floorButton=event.target.closest('[data-floor]');
     if(floorButton){floor=floorButton.dataset.floor;renderList();return}
     const overview=event.target.closest('[data-overview-filter]');
-    if(overview){filter=overview.dataset.overviewFilter;renderList();return}
+    if(overview){
+      // The top counters describe the whole dorm, so open an unambiguous full-dorm view.
+      floor='すべて';search='';$('roomDemoSearch').value='';
+      filter=overview.dataset.overviewFilter;renderList();return;
+    }
     if(event.target.closest('[data-clear-filters]')){
       floor='すべて';filter='すべて';search='';sort='room';
       $('roomDemoSearch').value='';renderList();return;
