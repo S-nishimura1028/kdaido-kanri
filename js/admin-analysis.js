@@ -8,6 +8,7 @@
   }
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const statuses=['使用中','未使用','修理中','廃棄'];
+  let typeSearchText='',typeSortOrder='total',renderSeq=0;
 
   function ensureStyles(){
     if(document.getElementById('adminAnalysisStyle'))return;
@@ -199,13 +200,22 @@
     const {data:profile}=await c.from('profiles').select('role').eq('id',session.user.id).maybeSingle();
     if(profile?.role!=='admin')return;
 
-    const {data,error}=await c.from('assets')
+    // PostgREST limits single responses (often to 1,000 records). Always
+    // aggregate the complete dataset so the charts don't silently undercount.
+    const mySeq=++renderSeq;
+    const request=c.from('assets')
       .select('id,asset_no,name,status,location,department,quantity,purchase_price,created_at,updated_at,is_deleted')
       .eq('is_deleted',false)
-      .order('updated_at',{ascending:false});
-    if(error){body.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
-
-    const rows=data||[];
+      .order('updated_at',{ascending:false})
+      .order('id',{ascending:false});
+    const rows=[];
+    for(let from=0;;from+=500){
+      const {data,error}=await request.range(from,from+499);
+      if(mySeq!==renderSeq)return;
+      if(error){body.innerHTML=`<div class="error">${esc(error.message)}</div>`;return;}
+      rows.push(...(data||[]));
+      if((data||[]).length<500)break;
+    }
     const total=rows.reduce((n,a)=>n+qty(a),0);
     const active=rows.filter(a=>a.status==='使用中').reduce((n,a)=>n+qty(a),0);
     const unused=rows.filter(a=>a.status==='未使用').reduce((n,a)=>n+qty(a),0);
@@ -231,6 +241,10 @@
       </div>`;
     const at=document.getElementById('analysisUpdatedAt');
     if(at)at.textContent='最終集計 '+new Date().toLocaleString('ja-JP');
+    const search=body.querySelector('#analysisTypeSearch'),sort=body.querySelector('#analysisTypeSort');
+    if(search)search.value=typeSearchText;
+    if(sort)sort.value=typeSortOrder;
+    filterTypeViews();
   }
 
   document.addEventListener('click',e=>{
@@ -243,10 +257,16 @@
     if(b)setTimeout(render,120);
   });
   document.addEventListener('input',e=>{
-    if(e.target?.id==='analysisTypeSearch')filterTypeViews();
+    if(e.target?.id==='analysisTypeSearch'){
+      typeSearchText=e.target.value;
+      filterTypeViews();
+    }
   });
   document.addEventListener('change',e=>{
-    if(e.target?.id==='analysisTypeSort')filterTypeViews();
+    if(e.target?.id==='analysisTypeSort'){
+      typeSortOrder=e.target.value;
+      filterTypeViews();
+    }
   });
   window.DaidoAnalysis=Object.freeze({render});
   window.addEventListener('DOMContentLoaded',()=>setTimeout(render,600));
