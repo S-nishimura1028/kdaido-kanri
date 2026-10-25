@@ -66,3 +66,13 @@ button{overflow-wrap:normal}
  #adminPage .master-actions .master-mini{min-height:43px;font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.workspace-card-actions button,#adminPage .master-actions button{transition:none!important}}
+
+/* Optional QR toolbar bulk selection, useful on card and mobile views. */
+#qrBatchPrintBar #qrSelectAllBtn{min-height:44px;min-width:153px;padding:10px 13px!important;font-size:12px;white-space:normal;font-weight:800;line-height:1.4}
+#qrBatchPrintBar #qrSelectAllBtn:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:600px){
+ #qrBatchPrintBar #qrSelectAllBtn,#qrBatchPrintBar #qrBatchPrintBtn{flex:1 1 145px}
+}
+@media(max-width:420px){
+ #qrBatchPrintBar #qrSelectAllBtn{width:100%;flex-basis:100%}
+}
