@@ -159,6 +159,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
   <link rel="stylesheet" href="css/qr-quick-actions.css?v=20261025-1">
   <link rel="stylesheet" href="css/asset-exit.css?v=20261025-3">
   <link rel="stylesheet" href="css/persona-ux-20261025.css?v=2">
+  <link rel="stylesheet" href="css/room-demo.css?v=20261025-1">
 </head>
 <body>
   <div id="loginView" class="login-view">
@@ -184,6 +185,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
         
         <button data-page="history" class="nav-btn">履歴</button>
         <button data-page="admin" class="nav-btn admin-only hidden">管理・履歴</button>
+        <button data-page="roomsDemo" class="nav-btn admin-only hidden" aria-label="部屋管理のデモ画面">部屋デモ</button>
       </nav>
       <button id="logoutBtn" class="logout">ログアウト</button>
     </aside>
@@ -207,6 +209,11 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
           <div class="stat dashboard-stat-link" data-dashboard-status="廃棄" role="button" tabindex="0" aria-label="廃棄の備品を見る"><span>廃棄</span><strong id="statDisposed">-</strong><small class="dashboard-stat-action">対象一覧を見る ↗</small></div>
           <div class="stat warning"><span>写真登録済み</span><strong id="statPhoto">-</strong></div>
         </div>
+        <div class="rd-dashboard-invite admin-only hidden" aria-label="部屋管理デモの案内">
+          <div><strong>部屋管理の画面案を体験できます <span aria-hidden="true">✦</span></strong>
+            <p>部屋一覧・備品の仮確認をスマホでも操作。実際のデータには影響しません。</p></div>
+          <button type="button" data-go="roomsDemo">部屋管理デモを試す</button>
+        </div>
         <div class="panel">
           <div class="panel-head"><h3>最近の備品</h3><button type="button" class="secondary" data-go="assets">備品一覧を見る</button></div>
           <div id="recentAssets" class="table-wrap"></div>
@@ -225,6 +232,17 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
       <section id="historyPage" class="page hidden">
         <div class="panel"><div class="panel-head"><h3>備品履歴</h3></div><div id="historyTable" class="table-wrap"></div></div>
+      </section>
+
+      <section id="roomsDemoPage" class="page hidden" aria-label="部屋管理の画面構想デモ">
+        <div id="roomDemoTop" class="rd-intro">
+          <div><h3>部屋管理｜操作できる仮デモ</h3>
+            <p>見取り図を作る前に、部屋一覧・詳細・備品確認の操作感を試すための画面です。PCでは一覧と詳細を並べ、スマホでは部屋を選んで詳細へ進めます。</p></div>
+          <span class="rd-demo-badge">構想段階・デモ専用</span>
+        </div>
+        <p class="rd-warning">この画面はサンプルです。部屋番号は配置検討用、入居者・所属・備品・件数・確認状況はすべて架空です。台帳への登録、QR読取、退去処理、保存は行われません。</p>
+        <div id="roomDemoApp"></div>
+        <div id="roomDemoFeedback" class="hidden" role="status" aria-live="polite"></div>
       </section>
 
       <section id="adminPage" class="page hidden">
@@ -299,7 +317,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
   <script src="js/config.js?v=20261022-ops-2"></script>
   <script src="js/image-compress.js"></script>
-  <script src="js/app.js?v=20261025-refined-2"></script>
+  <script src="js/app.js?v=20261025-roomdemo-1"></script>
   <script src="js/asset-input-guide.js?v=20261022-1"></script>
   <script src="js/admin-master.js?v=20261025-copy-1"></script>
   <!-- auto deploy test -->
@@ -309,5 +327,6 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
   <script src="js/asset-workspace-ui.js?v=20261025-refined-2"></script>
   <script src="js/qr-quick-actions.js?v=20261025-1"></script>
   <script src="js/asset-exit.js?v=20261025-4"></script>
+  <script src="js/room-demo.js?v=20261025-1"></script>
 </body>
 </html>
