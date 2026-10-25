@@ -192,7 +192,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
       <header class="topbar">
         <div>
           <h2 id="pageTitle">ダッシュボード</h2>
-          <span id="userInfo"></span><span id="connectionStatus" class="connection-status">接続確認中…</span>
+          <span id="userInfo"></span><span id="connectionStatus" class="connection-status" role="status" aria-live="polite">接続確認中…</span>
         </div>
         <button id="mobileLogoutBtn" type="button" class="secondary mobile-logout">ログアウト</button>
         <button id="mobileMenu" type="button" class="icon-btn" title="メニューを開く" aria-label="メニューを開く">☰</button>
@@ -200,11 +200,11 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
       <section id="dashboardPage" class="page">
         <div class="cards">
-          <div class="stat"><span>総備品数</span><strong id="statTotal">-</strong></div>
-          <div class="stat"><span>未使用</span><strong id="statAvailable">-</strong></div>
-          <div class="stat"><span>使用中</span><strong id="statUse">-</strong></div>
-          <div class="stat"><span>修理中</span><strong id="statRepair">-</strong></div>
-          <div class="stat"><span>廃棄</span><strong id="statDisposed">-</strong></div>
+          <div class="stat dashboard-stat-link" data-dashboard-status="" role="button" tabindex="0" aria-label="すべての備品を見る"><span>総備品数</span><strong id="statTotal">-</strong><small class="dashboard-stat-action">一覧で確認 ↗</small></div>
+          <div class="stat dashboard-stat-link" data-dashboard-status="未使用" role="button" tabindex="0" aria-label="未使用の備品を見る"><span>未使用</span><strong id="statAvailable">-</strong><small class="dashboard-stat-action">使える備品を見る ↗</small></div>
+          <div class="stat dashboard-stat-link" data-dashboard-status="使用中" role="button" tabindex="0" aria-label="使用中の備品を見る"><span>使用中</span><strong id="statUse">-</strong><small class="dashboard-stat-action">対象一覧を見る ↗</small></div>
+          <div class="stat dashboard-stat-link" data-dashboard-status="修理中" role="button" tabindex="0" aria-label="修理中の備品を見る"><span>修理中</span><strong id="statRepair">-</strong><small class="dashboard-stat-action">対象一覧を見る ↗</small></div>
+          <div class="stat dashboard-stat-link" data-dashboard-status="廃棄" role="button" tabindex="0" aria-label="廃棄の備品を見る"><span>廃棄</span><strong id="statDisposed">-</strong><small class="dashboard-stat-action">対象一覧を見る ↗</small></div>
           <div class="stat warning"><span>写真登録済み</span><strong id="statPhoto">-</strong></div>
         </div>
         <div class="panel">
