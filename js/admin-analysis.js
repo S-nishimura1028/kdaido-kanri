@@ -61,7 +61,16 @@
   }
 
   function qty(a){return Number(a.quantity||1)||1;}
-  function cleanName(v){return String(v||'名称未設定').trim().replace(/[　\s]+/g,' ')||'名称未設定';}
+  function cleanName(v){return String(v||'名称未設定').trim().replace(/[　\\s]+/g,' ')||'名称未設定';}
+  // Analyze standardized display groups, without rewriting the source assets.
+  // Preserve a search term guaranteed to match existing names.
+  function typeGroup(raw){
+    const name=cleanName(raw);
+    if(/^冷蔵庫(?:[（(].*[)）])?$/.test(name))return {name:'冷蔵庫',search:'冷蔵庫'};
+    if(/^セット[：:；;]/.test(name))return {name:'テーブル・椅子セット',search:'セット'};
+    if(name==='ベット'||name==='ベッド')return {name:'ベッド',search:'ベッ'};
+    return {name,search:name};
+  }
   function sumBy(rows,key){
     const m=new Map();
     rows.forEach(a=>{
@@ -77,8 +86,8 @@
   function typeSummary(rows){
     const map=new Map();
     rows.forEach(a=>{
-      const name=cleanName(a.name);
-      if(!map.has(name))map.set(name,{name,'使用中':0,'未使用':0,'修理中':0,'廃棄':0,total:0});
+      const grouped=typeGroup(a.name),name=grouped.name;
+      if(!map.has(name))map.set(name,{name,search:grouped.search,'使用中':0,'未使用':0,'修理中':0,'廃棄':0,total:0});
       const item=map.get(name);
       const n=qty(a);
       if(statuses.includes(a.status))item[a.status]+=n;
@@ -89,13 +98,14 @@
   function countCell(item,status){
     const n=item[status]||0;
     if(!n)return '<span class="analysis-count-zero">0</span>';
-    return `<button type="button" class="analysis-count-btn" data-analysis-name="${esc(item.name)}" data-analysis-status="${esc(status)}" title="${esc(item.name)}・${esc(status)}を表示">${n}</button>`;
+    return `<button type="button" class="analysis-count-btn" data-analysis-name="${esc(item.search)}" data-analysis-status="${esc(status)}" title="${esc(item.name)}・${esc(status)}を表示">${n}</button>`;
   }
   function typeTable(rows){
     const items=typeSummary(rows);
     if(!items.length)return '<div class="empty">データなし</div>';
     return `
-      <div class="analysis-type-note">備品名ごとの現在数です。青い数字を押すと、その備品・状態で一覧を絞り込みます。</div>
+      <div class="analysis-type-note">※ 登録マスタの「カテゴリ」は現時点では多くが「その他」です。この表は備品名の集計であり、正式なカテゴリ登録とは別です。</div>
+      <div class="analysis-type-note">備品名を基準にした種類別集計です（例：冷蔵庫［小］を冷蔵庫へ統合）。元データは変更していません。数字を押すと対応する備品一覧へ移動します。</div>
       <div class="analysis-type-wrap">
         <table class="analysis-type-table">
           <thead><tr><th>備品種類</th><th>使用中</th><th>未使用</th><th>修理中</th><th>廃棄</th><th>合計</th></tr></thead>
