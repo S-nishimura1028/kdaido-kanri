@@ -76,7 +76,19 @@ function renderCards(){
   var edit=row.querySelector('.edit-asset')?'<button type="button" class="workspace-edit" data-workspace-action="edit" aria-label="'+esc(no)+' '+esc(name)+' の情報を編集">情報を編集</button>':'';
   return '<article class="workspace-asset-card" data-id="'+id+'"><div class="workspace-card-top"><span class="workspace-card-kicker">備品 / ASSET</span><span class="workspace-card-status" data-status="'+esc(status)+'">'+esc(status)+'</span></div><div class="workspace-card-identity"><span class="workspace-card-symbol">'+assetGlyph(name)+'</span><div class="workspace-card-identity-text"><span class="workspace-card-number">'+esc(no)+'</span><h3>'+esc(name)+'</h3></div></div><dl class="workspace-card-meta"><div><dt>保管場所</dt><dd>'+esc(location||'—')+'</dd></div>'+(category&&category!=='その他'?'<div><dt>分類</dt><dd>'+esc(category)+'</dd></div>':'')+'<div><dt>数量</dt><dd>'+esc(amount||'—')+'</dd></div></dl><div class="workspace-card-actions"><button type="button" class="workspace-detail" data-workspace-action="detail" aria-label="'+esc(no)+' '+esc(name)+' の詳細を見る">詳細を見る</button>'+edit+checkbox+'</div></article>';
  }).join('')||'<div class="workspace-list-empty">該当する備品はありません。</div>';
+ syncCardSelections();
  updateChips();updateClearControl();
+}
+function syncCardSelections(){
+ // QR print owns the original table checkboxes. Reflect their live state
+ // in cards, including the "select all" action from the table header.
+ var table=$('assetTable')?.querySelector('table'),grid=$('assetCardGrid');
+ if(!table||!grid)return;
+ var selected=new Set([...table.querySelectorAll('.qr-row-check:checked')].map(c=>c.dataset.id));
+ grid.querySelectorAll('.workspace-card-check input[data-id]').forEach(cb=>{
+   var checked=selected.has(cb.dataset.id);
+   if(cb.checked!==checked)cb.checked=checked;
+ });
 }
 function initAssets(){
  var page=$('assetsPage'),toolbar=page?.querySelector('.toolbar'),table=$('assetTable');
@@ -113,6 +125,11 @@ function initAssets(){
   var row=[...table.querySelectorAll('tbody tr[data-id]')].find(x=>x.dataset.id===cb.dataset.id);
   var orig=row?.querySelector('.qr-row-check');if(!orig)return;
   orig.checked=cb.checked;orig.dispatchEvent(new Event('change',{bubbles:true}));
+ });
+ table.addEventListener('change',ev=>{
+   if(ev.target.matches('.qr-row-check, .qr-select-head input')){
+     syncCardSelections();
+   }
  });
  new MutationObserver(queueCards).observe(table,{childList:true,subtree:true});
  $('assetStatus')?.addEventListener('change',()=>{updateChips();updateClearControl()});
