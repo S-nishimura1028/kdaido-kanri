@@ -158,9 +158,13 @@
     const btn=document.getElementById('qrBatchPrintBtn');
     if(!btn) return;
     const n=document.querySelectorAll('#assetTable .qr-row-check:checked').length;
-    btn.textContent=n?`QRシールを一括印刷（${n}件）`:'QRシールを一括印刷';
-    btn.disabled=n===0;
-    btn.title=n?`選択中の${n}件をA4・27面のシール用紙に印刷します`:'印刷したい備品にチェックを入れてください';
+    // Only mutate the DOM when values actually change. The document-wide
+    // MutationObserver must not trigger another animation-frame render loop.
+    const label=n?`QRシールを一括印刷（${n}件）`:'QRシールを一括印刷';
+    const hint=n?`選択中の${n}件をA4・27面のシール用紙に印刷します`:'印刷したい備品にチェックを入れてください';
+    if(btn.textContent!==label)btn.textContent=label;
+    if(btn.disabled!==(n===0))btn.disabled=n===0;
+    if(btn.title!==hint)btn.title=hint;
   }
 
   function chooseStartPosition(){
