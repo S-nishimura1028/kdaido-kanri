@@ -1,0 +1,69 @@
+/* Dormitory exit & asset recovery, existing corporate visual system. */
+.workspace-exit-pane{max-width:1200px}
+.exit-panel{padding:23px}
+.exit-intro{margin:6px 0 0;font-size:12px;line-height:1.7;color:#718892}
+.exit-picker{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;background:#f6fafb;border:1px solid #e1eced;padding:15px;border-radius:14px;margin:17px 0}
+.exit-picker label{flex:1 1 260px;display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:800;color:#31576e}
+.exit-picker select{width:100%;min-height:46px;font-size:13px}
+.exit-picker button{min-height:46px;font-size:13px;font-weight:800;padding:9px 16px;white-space:normal;line-height:1.5}
+.exit-message:not(:empty){background:#ecf7f1;color:#2e7553;border:1px solid #d2e9d8;border-radius:10px;padding:11px 13px;font-size:13px;margin-bottom:15px;font-weight:750;line-height:1.6}
+.exit-message.exit-warning:not(:empty){background:#fff6f0;color:#9c5140;border-color:#efd9cb}
+.exit-ongoing{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 18px}
+.exit-ongoing h4,.exit-completed h4{flex:1 0 100%;font-size:13px;color:#315769;margin:0 0 3px;font-weight:800}
+.exit-session-link{border:1px solid #bad6d9;background:#f3f9fa;color:#1d6b85;min-height:39px;padding:8px 12px;border-radius:10px;text-align:left;font-weight:800;font-size:12px;line-height:1.4}
+.exit-session-link small{font-size:10px;margin-left:5px;color:#547f87}
+.exit-session-link:hover{background:#e5f3f5;border-color:#7eafb9}
+.exit-muted{margin:5px 0 12px;font-size:12px;color:#7c9296;line-height:1.6}
+.exit-session{margin:0 0 18px}
+.exit-session-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;background:#eaf4f6;border:1px solid #d3e5e9;padding:16px 17px;border-radius:14px;margin-bottom:14px}
+.exit-session-head small{font-weight:820;color:#518198;letter-spacing:.045em;font-size:11px}
+.exit-session-head h4{font-size:19px;font-weight:850;color:#153e54;line-height:1.4;margin:5px 0}
+.exit-session-head p{font-size:12px;color:#5f7d89;line-height:1.6;margin:2px 0 0}
+.exit-session-head .secondary{min-height:42px;font-size:12px}
+.exit-progress-numbers{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;color:#647d89;margin:14px 0 8px}
+.exit-progress-numbers strong{font-size:17px;font-weight:870;color:#1c5775}
+.exit-progress{width:100%;height:12px;border:0;border-radius:999px;accent-color:#308f79;display:block;overflow:hidden;margin-bottom:18px}
+.exit-progress::-webkit-progress-bar{background:#e9f1f2;border-radius:999px}
+.exit-progress::-webkit-progress-value{background:linear-gradient(90deg,#1982b2,#38a27a);border-radius:999px}
+.exit-caution{background:#fff5eb;color:#965920;border:1px solid #eacfaa;border-radius:11px;padding:11px 13px;font-size:12px;font-weight:750;margin:0 0 16px;line-height:1.65}
+.exit-item-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:13px}
+.exit-item{min-width:0;border:1px solid #dce9e9;background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 17px rgba(22,67,89,.035)}
+.exit-item-header{display:flex;justify-content:space-between;align-items:flex-start;gap:11px;padding-bottom:12px;border-bottom:1px solid #ebf0f1}
+.exit-item-header>div{display:grid;min-width:0;gap:4px}
+.exit-item-header small{font-size:11px;color:#136a95;font-weight:820;letter-spacing:.04em}
+.exit-item-header strong{font-size:16px;line-height:1.45;color:#183e53;font-weight:830;overflow-wrap:anywhere}
+.exit-meta{font-size:11px;color:#7b9196;line-height:1.5}
+.exit-badge{font-size:10px;padding:6px 9px;font-weight:850;border-radius:999px;white-space:nowrap;background:#edf3f5;color:#647f87}
+.exit-badge.exit-returned{background:#e5f5ea;color:#337c52}
+.exit-badge.exit-transferred{background:#e8f2fb;color:#316f9a}
+.exit-badge.exit-unrecovered{background:#fff0e5;color:#9d572f}
+.exit-item-form{display:grid;gap:11px;margin-top:13px}
+.exit-item-form label:not(.exit-check){display:flex;flex-direction:column;gap:6px;font-size:12px;color:#365d6c;font-weight:760;min-width:0}
+.exit-item-form select,.exit-item-form textarea{width:100%;font-size:13px;line-height:1.6;min-height:44px;margin:0}
+.exit-item-form textarea{min-height:69px;resize:vertical}
+.exit-item-form .exit-check{display:flex;align-items:start;gap:10px;font-size:12px;color:#365f53;font-weight:750;background:#f4faf6;padding:10px 11px;border:1px solid #dceae0;border-radius:10px;line-height:1.6;cursor:pointer}
+.exit-check input{width:21px!important;height:21px!important;min-height:21px;flex:none;accent-color:#32916d;margin:0}
+.exit-item-form .exit-process{width:100%;min-height:44px;line-height:1.4;font-size:13px}
+.exit-item.exit-done{background:#f9fcfb;border-color:#cfe6dd}
+.exit-processed,.exit-item-note{font-size:12px;color:#577a70;line-height:1.7;overflow-wrap:anywhere;margin:12px 0 0}
+.exit-item-note{font-size:11px;color:#667e85}
+.exit-finalize{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f5f8fa;border:1px solid #dce8ec;border-radius:14px;margin:18px 0 0;padding:15px 17px;flex-wrap:wrap}
+.exit-finalize p{margin:0;flex:1 1 260px;font-size:12px;color:#647c87;line-height:1.6}
+.exit-finalize button{min-height:47px;padding:10px 20px;font-size:13px;line-height:1.45}
+.exit-finalize button:disabled{background:#bacbd1!important;border-color:#bacbd1!important;opacity:.8;box-shadow:none!important;cursor:not-allowed}
+.exit-completed{margin-top:18px;display:grid;gap:4px}
+.exit-completed-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e4edef;padding:8px 4px;font-size:12px;font-weight:780;color:#4d6f7b}
+.exit-completed-row small{font-size:11px;color:#7e969a}
+@media(max-width:800px){
+ .exit-panel{padding:16px}
+ .exit-picker{padding:12px;gap:10px}
+ .exit-picker button{width:100%}
+ .exit-session-head{padding:13px 14px}
+ .exit-session-head h4{font-size:16px}
+ .exit-session-head .secondary{width:100%}
+ .exit-item-list{grid-template-columns:1fr}
+ .exit-item{padding:15px}
+ .exit-finalize button{width:100%}
+ .exit-ongoing{padding:2px 0}
+}
+@media(prefers-reduced-motion:reduce){.exit-session-link,.exit-item-form button{transition:none!important}}
