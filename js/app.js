@@ -93,7 +93,7 @@
   document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>go(b.dataset.page));
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
   $('mobileMenu').onclick=()=>document.querySelector('.sidebar').classList.toggle('open');
-  function go(page){const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理'};document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));$(page+'Page').classList.remove('hidden');$('pageTitle').textContent=titles[page];document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='admin'&&isManager())loadAdmin();}
+  function go(page){const titles={dashboard:'ダッシュボード',assets:'備品一覧',history:'履歴',admin:'管理・履歴'};document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));$(page+'Page').classList.remove('hidden');$('pageTitle').textContent=titles[page];document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));if(page==='admin'&&isManager())loadAdmin();}
   async function loadMasters(){
     const [c,l,d,u]=await Promise.all([
       db.from('categories').select('*').eq('is_active',true).order('name'),
