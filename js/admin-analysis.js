@@ -87,54 +87,104 @@
     const map=new Map();
     rows.forEach(a=>{
       const grouped=typeGroup(a.name),name=grouped.name;
-      if(!map.has(name))map.set(name,{name,search:grouped.search,'使用中':0,'未使用':0,'修理中':0,'廃棄':0,total:0});
-      const item=map.get(name);
-      const n=qty(a);
-      if(statuses.includes(a.status))item[a.status]+=n;
+      if(!map.has(name))map.set(name,{
+        name,search:grouped.search,'使用中':0,'未使用':0,'修理中':0,'廃棄':0,total:0,
+        ids:{all:[],'使用中':[],'未使用':[],'修理中':[],'廃棄':[]}
+      });
+      const item=map.get(name),n=qty(a);
       item.total+=n;
+      if(a.id)item.ids.all.push(a.id);
+      if(statuses.includes(a.status)){
+        item[a.status]+=n;
+        if(a.id)item.ids[a.status].push(a.id);
+      }
     });
     return [...map.values()].sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,'ja'));
   }
-  function countCell(item,status){
-    const n=item[status]||0;
-    if(!n)return '<span class="analysis-count-zero">0</span>';
-    return `<button type="button" class="analysis-count-btn" data-analysis-name="${esc(item.search)}" data-analysis-status="${esc(status)}" title="${esc(item.name)}・${esc(status)}を表示">${n}</button>`;
+  // One exact selection powers both desktop table cells and mobile cards.
+  // Never use substring search for grouped names (e.g. ベッド/ベット).
+  function countCell(item,status,style=''){
+    const n=status?item[status]:item.total;
+    const display=status||'合計';
+    if(!n)return '<span class="analysis-count-zero" aria-label="'+esc(display)+'は0件">0</span>';
+    const ids=item.ids[status||'all'].join(',');
+    return '<button type="button" class="analysis-count-btn '+style+
+      '" data-analysis-ids="'+esc(ids)+'" data-analysis-name="'+esc(item.name)+
+      '" data-analysis-status="'+esc(status||'')+
+      '" aria-label="'+esc(item.name+'の'+display+' '+n+'件を一覧で見る')+'">'+n+
+      '<span class="analysis-count-action" aria-hidden="true"> ↗</span></button>';
   }
   function typeTable(rows){
     const items=typeSummary(rows);
-    if(!items.length)return '<div class="empty">データなし</div>';
-    return `
-      <div class="analysis-type-note">※ 登録マスタの「カテゴリ」は現時点では多くが「その他」です。この表は備品名の集計であり、正式なカテゴリ登録とは別です。</div>
-      <div class="analysis-type-note">備品名を基準にした種類別集計です（例：冷蔵庫［小］を冷蔵庫へ統合）。元データは変更していません。数字を押すと対応する備品一覧へ移動します。</div>
-      <div class="analysis-type-wrap">
-        <table class="analysis-type-table">
-          <thead><tr><th>備品種類</th><th>使用中</th><th>未使用</th><th>修理中</th><th>廃棄</th><th>合計</th></tr></thead>
-          <tbody>${items.map(item=>`
-            <tr>
-              <td>${esc(item.name)}</td>
-              <td>${countCell(item,'使用中')}</td>
-              <td>${countCell(item,'未使用')}</td>
-              <td>${countCell(item,'修理中')}</td>
-              <td>${countCell(item,'廃棄')}</td>
-              <td class="analysis-total">${item.total}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    if(!items.length)return '<div class="empty">分析できる備品がありません。</div>';
+    const desktop=items.map(item=>'<tr data-analysis-type-item data-label="'+esc(item.name)+
+      '" data-total="'+item.total+'" data-available="'+item['未使用']+'" data-repair="'+item['修理中']+'">'+
+      '<th scope="row" class="analysis-type-name">'+esc(item.name)+'</th>'+
+      '<td>'+countCell(item,'使用中')+'</td><td class="analysis-available-cell">'+countCell(item,'未使用')+'</td>'+
+      '<td>'+countCell(item,'修理中')+'</td><td>'+countCell(item,'廃棄')+'</td>'+
+      '<td class="analysis-total">'+countCell(item,'','analysis-count-total')+'</td></tr>').join('');
+    const mobile=items.map(item=>'<article class="analysis-type-item-card" data-analysis-type-item data-label="'+esc(item.name)+
+      '" data-total="'+item.total+'" data-available="'+item['未使用']+'" data-repair="'+item['修理中']+'">'+
+      '<div class="analysis-type-card-header"><h5>'+esc(item.name)+'</h5>'+
+      '<div class="analysis-type-card-total"><span>合計</span>'+countCell(item,'','analysis-count-total')+'</div></div>'+
+      '<div class="analysis-type-card-grid">'+[
+        ['未使用','available'],['使用中','inuse'],['修理中','repair'],['廃棄','disposed']
+      ].map(([status,key])=>'<div class="analysis-type-card-stat analysis-state-'+key+'"><span>'+esc(status)+
+        '</span>'+countCell(item,status)+'</div>').join('')+'</div>'+
+      '</article>').join('');
+    return '<p class="analysis-type-intro">備品名で集計しています。<strong>数字を押すと、その備品だけの一覧</strong>に移動します。</p>'+
+      '<div class="analysis-type-toolbar"><label>種類を探す<input type="search" id="analysisTypeSearch" autocomplete="off" placeholder="例：冷蔵庫・自転車"></label>'+
+      '<label>並び順<select id="analysisTypeSort"><option value="total">総数が多い順</option><option value="available">未使用が多い順</option>'+
+      '<option value="repair">修理中が多い順</option><option value="name">種類名順</option></select></label></div>'+
+      '<div class="analysis-type-count" id="analysisTypeMeta" role="status" aria-live="polite">'+items.length+'種類を表示</div>'+
+      '<div class="analysis-type-desktop"><table class="analysis-type-table"><thead><tr>'+
+      '<th scope="col">備品の種類</th><th scope="col">使用中</th><th scope="col">未使用</th>'+
+      '<th scope="col">修理中</th><th scope="col">廃棄</th><th scope="col">合計</th></tr></thead><tbody>'+
+      desktop+'</tbody></table></div>'+
+      '<div class="analysis-type-mobile" id="analysisTypeCards">'+mobile+'</div>'+
+      '<div id="analysisTypeEmpty" class="analysis-type-empty hidden">該当する種類はありません。検索条件を変えてください。</div>'+
+      '<p class="analysis-type-footnote">※ マスタのカテゴリとは別に、備品名をもとに集計しています。元の登録情報は変更しません。</p>';
   }
-
-  function openFilteredAssets(name,status){
-    const search=document.getElementById('assetSearch');
-    const statusEl=document.getElementById('assetStatus');
-    const category=document.getElementById('assetCategory');
-    if(!search||!statusEl)return;
-    search.value=name;
-    statusEl.value=status;
-    if(category)category.value='';
-    const nav=document.querySelector('.nav-btn[data-page="assets"]');
-    if(nav)nav.click();
-    statusEl.dispatchEvent(new Event('change',{bubbles:true}));
-    search.dispatchEvent(new Event('input',{bubbles:true}));
+  function filterTypeViews(){
+    const box=document.getElementById('adminAnalysisPanel');if(!box)return;
+    const search=box.querySelector('#analysisTypeSearch');
+    const sort=box.querySelector('#analysisTypeSort');
+    if(!search||!sort)return;
+    const query=search.value.trim().normalize('NFKC').toLowerCase();
+    const selector='[data-analysis-type-item]';
+    const table=box.querySelector('.analysis-type-table tbody');
+    const cards=box.querySelector('#analysisTypeCards');
+    const rows=[...(table?.querySelectorAll(selector)||[])];
+    const cardNodes=[...(cards?.querySelectorAll(selector)||[])];
+    const compare=(x,y)=>{
+      const key=sort.value;
+      if(key==='name')return x.dataset.label.localeCompare(y.dataset.label,'ja');
+      const field=key==='repair'?'repair':key==='available'?'available':'total';
+      return (Number(y.dataset[field])||0)-(Number(x.dataset[field])||0)||
+        x.dataset.label.localeCompare(y.dataset.label,'ja');
+    };
+    rows.sort(compare).forEach(el=>table.appendChild(el));
+    cardNodes.sort(compare).forEach(el=>cards.appendChild(el));
+    let shown=0;
+    rows.forEach(el=>{
+      const visible=el.dataset.label.normalize('NFKC').toLowerCase().includes(query);
+      el.hidden=!visible;
+      if(visible)shown++;
+    });
+    cardNodes.forEach(el=>{
+      el.hidden=!el.dataset.label.normalize('NFKC').toLowerCase().includes(query);
+    });
+    const label=box.querySelector('#analysisTypeMeta');
+    if(label)label.textContent=shown+' / '+rows.length+'種類を表示';
+    box.querySelector('#analysisTypeEmpty')?.classList.toggle('hidden',shown!==0);
+  }
+  function openFilteredAssets(ids,status,name){
+    const api=window.DaidoAssetNav;
+    if(!api?.openFromAnalysis){
+      window.alert('備品一覧の準備ができていません。画面を更新してください。');
+      return;
+    }
+    api.openFromAnalysis({ids,status,label:name});
   }
 
   async function render(){
@@ -188,11 +238,17 @@
   document.addEventListener('click',e=>{
     const count=e.target.closest('.analysis-count-btn');
     if(count){
-      openFilteredAssets(count.dataset.analysisName||'',count.dataset.analysisStatus||'');
+      openFilteredAssets((count.dataset.analysisIds||'').split(',').filter(Boolean),count.dataset.analysisStatus||'',count.dataset.analysisName||'');
       return;
     }
     const b=e.target.closest('.nav-btn[data-page="admin"],[data-go="admin"]');
     if(b)setTimeout(render,120);
+  });
+  document.addEventListener('input',e=>{
+    if(e.target?.id==='analysisTypeSearch')filterTypeViews();
+  });
+  document.addEventListener('change',e=>{
+    if(e.target?.id==='analysisTypeSort')filterTypeViews();
   });
   window.DaidoAnalysis=Object.freeze({render});
   window.addEventListener('DOMContentLoaded',()=>setTimeout(render,600));
