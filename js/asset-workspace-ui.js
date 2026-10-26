@@ -19,6 +19,7 @@ function readSavedView(){
 }
 var view=readSavedView(), cardFrame=0, adminTab='analysis', historySearch='', historyType='', historyLimit=80;
 var assetMap=new Map(), lookupDone=false;
+var historyRefreshing=false;
 
 function assetGlyph(name){
  var n=String(name||'');
@@ -217,11 +218,37 @@ function renderAdminHistory(){
  }).join('')+'</tbody></table>':'<div class="workspace-list-empty">該当する履歴はありません。</div>';
  $('workspaceHistoryMore').classList.toggle('hidden',shown.length>=filtered.length);
 }
+async function refreshAdminHistory(){
+ if(historyRefreshing)return;
+ const button=$('workspaceHistoryRefresh'),indicator=$('workspaceHistoryRefreshState');
+ const refresh=window.DaidoQrBridge?.refreshHistory;
+ if(!refresh){
+  if(indicator)indicator.textContent='履歴の読み込み機能が準備できていません。画面を再読み込みしてください。';
+  return;
+ }
+ historyRefreshing=true;
+ if(button)button.disabled=true;
+ if(indicator)indicator.textContent='最新の履歴を確認中…';
+ try{
+  await refresh();
+  if(adminTab==='history')renderAdminHistory();
+  if(indicator)indicator.textContent='更新 '+new Date().toLocaleString('ja-JP');
+ }catch(error){
+  console.error('変更履歴の再取得に失敗',error);
+  if(indicator)indicator.textContent='更新に失敗しました。通信を確認して再度お試しください。';
+ }finally{
+  historyRefreshing=false;
+  if(button)button.disabled=false;
+ }
+}
 function setAdminTab(tab){
  adminTab=['analysis','users','settings','history','exit'].includes(tab)?tab:'analysis';
  document.querySelectorAll('.workspace-tab[data-admin-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.adminTab===adminTab)));
  applyAdminPanels();
- if(adminTab==='history'){renderAdminHistory();lookupAssets()}
+ if(adminTab==='history'){renderAdminHistory();lookupAssets();refreshAdminHistory()}
+ if(adminTab==='analysis'&&window.DaidoAnalysis?.render){
+  Promise.resolve(window.DaidoAnalysis.render()).catch(err=>console.error('備品分析の更新に失敗',err));
+ }
  if(adminTab==='exit')window.DaidoExit?.show();else window.DaidoExit?.hide();
 }
 function applyAdminPanels(){
@@ -249,8 +276,9 @@ function initAdmin(){
   ev.preventDefault();setAdminTab(buttons[next].dataset.adminTab);buttons[next].focus();
  });
  var pane=document.createElement('section');pane.id='workspaceAdminHistory';pane.className='workspace-history-pane hidden';
- pane.innerHTML='<div class="panel"><div class="panel-head"><h3>備品の変更履歴</h3></div><div class="workspace-history-tools"><input id="workspaceHistorySearch" type="search" aria-label="変更履歴を検索" placeholder="管理No.・備品名・操作内容で検索"><select id="workspaceHistoryKind" aria-label="操作区分"><option value="">すべての操作</option></select></div><div id="workspaceHistoryCount" class="workspace-history-count"></div><div id="workspaceHistoryRows" class="table-wrap"></div><button type="button" id="workspaceHistoryMore" class="secondary hidden" style="min-height:42px;margin-top:12px">次の80件を表示</button></div>';
+ pane.innerHTML='<div class="panel"><div class="panel-head"><h3>備品の変更履歴</h3></div><div class="workspace-history-meta"><button type="button" id="workspaceHistoryRefresh" class="secondary">最新の履歴を取得</button><span id="workspaceHistoryRefreshState" role="status" aria-live="polite"></span></div><div class="workspace-history-tools"><input id="workspaceHistorySearch" type="search" aria-label="変更履歴を検索" placeholder="管理No.・備品名・操作内容で検索"><select id="workspaceHistoryKind" aria-label="操作区分"><option value="">すべての操作</option></select></div><div id="workspaceHistoryCount" class="workspace-history-count"></div><div id="workspaceHistoryRows" class="table-wrap"></div><button type="button" id="workspaceHistoryMore" class="secondary hidden" style="min-height:42px;margin-top:12px">次の80件を表示</button></div>';
  grid.insertAdjacentElement('afterend',pane);
+ $('workspaceHistoryRefresh').addEventListener('click',refreshAdminHistory);
  $('workspaceHistorySearch').addEventListener('input',ev=>{historySearch=ev.target.value.trim().normalize('NFKC').toLowerCase();historyLimit=80;renderAdminHistory()});
  $('workspaceHistoryKind').addEventListener('change',ev=>{historyType=ev.target.value;historyLimit=80;renderAdminHistory()});
  $('workspaceHistoryMore').addEventListener('click',()=>{historyLimit+=80;renderAdminHistory()});
