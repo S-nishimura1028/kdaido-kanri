@@ -1,0 +1,279 @@
+/* Mobile asset detail: front-load decisions, keep full record on demand. */
+.mobile-detail-overview,.mobile-detail-more-toggle{display:none}
+@media(max-width:800px){
+ #detailDialog{
+   overflow-x:hidden!important;
+   overscroll-behavior-x:none;
+   scroll-padding-top:72px;
+ }
+ #detailDialog .dialog-card{min-width:0;overflow-x:clip}
+ #detailDialog #assetDetail{min-width:0;overflow-wrap:anywhere}
+ #detailDialog .dialog-head{margin-bottom:12px!important}
+ #assetDetail .mobile-detail-overview{
+   display:block;
+   min-width:0;
+   margin:0 0 15px;
+   padding:17px 15px 14px;
+   border:1px solid #c9e2e6;
+   border-radius:17px;
+   background:linear-gradient(145deg,#f4faff 0%,#f7fcf9 100%);
+   box-shadow:0 4px 13px rgba(10,67,91,.045);
+   color:#173e56;
+ }
+ #assetDetail .mobile-detail-summary-head{
+   display:flex;
+   align-items:center;
+   justify-content:space-between;
+   gap:10px;
+   flex-wrap:wrap;
+   margin-bottom:8px;
+ }
+ #assetDetail .mobile-detail-eyebrow{
+   color:#42758c;
+   font-weight:800;
+   letter-spacing:.035em;
+   font-size:11px;
+ }
+ #assetDetail .mobile-detail-state{
+   display:inline-flex;
+   justify-content:center;
+   align-items:center;
+   padding:6px 11px;
+   border-radius:999px;
+   border:1px solid #dce8eb;
+   color:#476b7a;
+   background:#edf3f5;
+   font-weight:850;
+   font-size:12px;
+   line-height:1.25;
+   white-space:nowrap;
+ }
+ #assetDetail .mobile-detail-state[data-status="未使用"]{
+   color:#1a7247;background:#e3f5e9;border-color:#bce4cc
+ }
+ #assetDetail .mobile-detail-state[data-status="使用中"]{
+   color:#145f91;background:#e6f3fc;border-color:#c0dfea
+ }
+ #assetDetail .mobile-detail-state[data-status="修理中"]{
+   color:#89591d;background:#fff5e2;border-color:#f1d7aa
+ }
+ #assetDetail .mobile-detail-state[data-status="廃棄"]{
+   color:#9e4141;background:#fcf0ef;border-color:#edcfca
+ }
+ #assetDetail .mobile-detail-name{
+   font-size:22px;
+   line-height:1.35;
+   color:#133c56;
+   margin:0 0 10px;
+   font-weight:870;
+   letter-spacing:-.025em;
+   overflow-wrap:anywhere;
+ }
+ #assetDetail .mobile-detail-identity{
+   display:flex;
+   align-items:baseline;
+   flex-wrap:wrap;
+   gap:7px;
+   color:#607f8d;
+   font-size:11px;
+   font-weight:740;
+   margin:0 0 14px;
+ }
+ #assetDetail .mobile-detail-identity strong{
+   color:#1f638b;
+   font-size:13px;
+   font-weight:850;
+   font-variant-numeric:tabular-nums;
+ }
+ #assetDetail .mobile-detail-essentials{
+   display:grid;
+   grid-template-columns:repeat(2,minmax(0,1fr));
+   gap:9px;
+ }
+ #assetDetail .mobile-detail-meta{
+   min-width:0;
+   padding:12px 11px;
+   border:1px solid #dce9e9;
+   border-radius:11px;
+   background:rgba(255,255,255,.95);
+   display:flex;
+   flex-direction:column;
+   gap:5px;
+ }
+ #assetDetail .mobile-detail-meta-label{font-size:11px;color:#647f88;font-weight:760;line-height:1.5}
+ #assetDetail .mobile-detail-meta-value{
+   display:block;
+   font-size:13px;
+   color:#183e56;
+   line-height:1.55;
+   font-weight:850;
+   min-width:0;
+   overflow-wrap:anywhere;
+ }
+ #assetDetail .mobile-detail-photo-link{
+   display:inline-flex;
+   margin:11px 0 0;
+   align-items:center;
+   justify-content:center;
+   background:transparent;
+   border:0;
+   color:#096b9e;
+   padding:9px 9px 4px;
+   min-height:41px;
+   font-size:12.5px;
+   font-weight:850;
+   text-decoration:underline;
+   text-underline-offset:3px;
+ }
+ #assetDetail #workspaceDetailTabs{
+   display:grid!important;
+   grid-template-columns:repeat(3,minmax(0,1fr))!important;
+   gap:6px!important;
+   margin:0 0 12px!important;
+   padding:0 0 10px!important;
+   overflow:visible!important;
+ }
+ #assetDetail #workspaceDetailTabs .workspace-tab{
+   display:flex;
+   align-items:center;
+   justify-content:center;
+   white-space:normal!important;
+   min-width:0!important;
+   min-height:49px!important;
+   width:100%!important;
+   padding:8px 5px!important;
+   font-size:12.5px!important;
+   line-height:1.4!important;
+   text-align:center;
+   border:1px solid #dce8e8;
+   background:#fff;
+   border-radius:10px;
+   font-weight:800;
+   color:#446b7b;
+ }
+ #assetDetail #workspaceDetailTabs .workspace-tab[aria-selected="true"]{
+   border-color:#89bfd3;
+   color:#0c6894;
+   background:#e8f5fa;
+   box-shadow:inset 0 -3px 0 #1b83ae;
+ }
+ #assetDetail .mobile-detail-more-toggle{
+   display:none;
+   width:100%;
+   min-height:48px;
+   padding:12px 14px;
+   margin:0 0 12px;
+   border:1px solid #c8dfe7;
+   border-radius:11px;
+   background:#fff;
+   color:#11678e;
+   font-size:13px;
+   font-weight:850;
+   line-height:1.5;
+   text-align:center;
+   cursor:pointer;
+ }
+ #assetDetail:has(#workspaceDetailTabs [data-detail-tab="info"][aria-selected="true"])
+ .mobile-detail-more-toggle{display:block}
+ #assetDetail .mobile-detail-more-toggle::after{content:"  ＋";font-size:17px}
+ #assetDetail .mobile-detail-more-toggle[aria-expanded="true"]::after{content:"  −"}
+ #assetDetail.mobile-detail-enhanced:not(.mobile-detail-more-open) .detail-grid{display:none!important}
+ #assetDetail .detail-grid{
+   grid-template-columns:repeat(2,minmax(0,1fr))!important;
+   gap:8px!important;
+   margin-bottom:13px;
+ }
+ #assetDetail .detail-item{
+   min-width:0;
+   padding:11px 10px!important;
+   font-size:12.5px!important;
+   line-height:1.55;
+   overflow-wrap:anywhere;
+   border-radius:11px!important;
+ }
+ #assetDetail .detail-item small{
+   font-size:10.5px!important;
+   line-height:1.45;
+   margin-bottom:5px;
+ }
+ #assetDetail .detail-item:last-child{grid-column:1/-1}
+ #assetDetail #detailPhotos{
+   grid-template-columns:repeat(2,minmax(0,1fr))!important;
+   gap:9px!important;
+   margin:0 0 15px!important;
+   min-width:0;
+ }
+ #detailDialog #detailPhotos #detailPhoto,
+ #detailDialog #detailPhotos #detailLabelPhoto{
+   display:block;
+   width:100%!important;
+   height:154px!important;
+   max-height:154px!important;
+   object-fit:contain!important;
+   background:#f8fbfc!important;
+   border-radius:11px!important;
+ }
+ #assetDetail #detailPhotos>div{min-width:0}
+ #assetDetail #detailPhotos>div small{font-size:12px!important;color:#41697b!important}
+ #assetDetail #detailPhotos:has(#detailPhotoWrap.hidden) #detailLabelPhotoWrap:not(.hidden),
+ #assetDetail #detailPhotos:has(#detailLabelPhotoWrap.hidden) #detailPhotoWrap:not(.hidden){grid-column:1/-1}
+ #detailDialog #detailPhotos:has(#detailPhotoWrap.hidden) #detailLabelPhotoWrap:not(.hidden) img,
+ #detailDialog #detailPhotos:has(#detailLabelPhotoWrap.hidden) #detailPhotoWrap:not(.hidden) img{
+   height:200px!important;max-height:200px!important
+ }
+ #assetDetail #qrQuickPanel{
+   margin:12px 0 15px;
+   padding:13px 12px;
+ }
+ #assetDetail .qr-quick-heading h4{font-size:15px}
+ #assetDetail .qr-quick-action{min-height:70px!important;padding:10px!important}
+ #assetDetail .qr-quick-action strong{font-size:13px!important}
+ #assetDetail .qr-quick-action small{font-size:11px!important}
+ #assetDetail>.dialog-actions{
+   display:grid!important;
+   grid-template-columns:repeat(2,minmax(0,1fr))!important;
+   align-items:stretch!important;
+   gap:9px!important;
+   margin:14px 0 0!important;
+   padding-top:14px!important;
+   border-top:1px solid #e2edef;
+   background:#fff;
+ }
+ #assetDetail>.dialog-actions>button{
+   width:100%!important;
+   min-width:0!important;
+   min-height:48px!important;
+   margin:0!important;
+   flex:none!important;
+   padding:11px 7px!important;
+   font-size:12.5px!important;
+   line-height:1.4;
+   border-radius:10px;
+   overflow-wrap:anywhere;
+   white-space:normal!important;
+ }
+ #assetDetail #detailEditBtn{order:1;grid-column:1/-1}
+ #assetDetail #currentUserQuickEditBtn{order:2}
+ #assetDetail #employeePhotoUpdateBtn{order:3}
+ #assetDetail #qrBtn{order:4}
+ #assetDetail #detailDeleteBtn{order:5}
+ #assetDetail #qrArea{
+   max-width:100%;
+   overflow:hidden;
+   padding:11px!important;
+ }
+ #assetDetail #workspaceDetailHistory{
+   max-height:none;
+   min-width:0;
+ }
+ #assetDetail .workspace-detail-event{padding:11px 4px;font-size:12.5px}
+}
+@media(max-width:370px){
+ #assetDetail .mobile-detail-name{font-size:20px}
+ #assetDetail .mobile-detail-essentials{grid-template-columns:1fr}
+ #assetDetail .mobile-detail-meta{padding:9px 11px}
+ #assetDetail #workspaceDetailTabs .workspace-tab{font-size:11.5px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ #assetDetail .mobile-detail-more-toggle,#assetDetail .mobile-detail-photo-link{transition:none!important}
+}
