@@ -4,9 +4,21 @@ var $=id=>document.getElementById(id);
 var esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 var statuses=['','未使用','使用中','修理中','廃棄'];
 var statusIds={'':'statTotal','未使用':'statAvailable','使用中':'statUse','修理中':'statRepair','廃棄':'statDisposed'};
-var view='table', cardFrame=0, adminTab='analysis', historySearch='', historyType='', historyLimit=80;
+// Keep a distinct preference for a phone and a wider desktop screen.
+var mobileViewQuery=matchMedia('(max-width:800px)');
+function viewStorageKey(){return mobileViewQuery.matches?'daido:asset-view-mobile':'daido:asset-view-desktop'}
+function readSavedView(){
+ var mobile=mobileViewQuery.matches,choice=null;
+ try{
+  choice=localStorage.getItem(viewStorageKey());
+  // Preserve the old shared preference on desktop only: it used to force
+  // desktop table layouts onto narrow smartphone screens.
+  if(!choice&&!mobile)choice=localStorage.getItem('daido:asset-view');
+ }catch(_){}
+ return choice==='cards'||choice==='table'?choice:(mobile?'cards':'table');
+}
+var view=readSavedView(), cardFrame=0, adminTab='analysis', historySearch='', historyType='', historyLimit=80;
 var assetMap=new Map(), lookupDone=false;
-try{view=localStorage.getItem('daido:asset-view')|| (matchMedia('(max-width:800px)').matches?'cards':'table')}catch(_){view='cards'}
 
 function assetGlyph(name){
  var n=String(name||'');
@@ -41,9 +53,9 @@ function updateChips(){
   if(n&&source){var t=(source.textContent||'').trim();n.textContent=t==='-'?'':' '+t}
  });
 }
-function setView(mode){
+function setView(mode,persist=true){
  view=mode==='cards'?'cards':'table';
- try{localStorage.setItem('daido:asset-view',view)}catch(_){}
+ if(persist)try{localStorage.setItem(viewStorageKey(),view)}catch(_){}
  $('assetsPage')?.classList.toggle('workspace-card-mode',view==='cards');
  document.querySelectorAll('.workspace-view-btn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));
  if(view==='cards')queueCards();
@@ -136,7 +148,12 @@ function initAssets(){
  $('assetStatus')?.addEventListener('change',()=>{updateChips();updateClearControl()});
  $('assetCategory')?.addEventListener('change',updateClearControl);
  $('assetSearch')?.addEventListener('input',updateClearControl);
- setView(view);updateChips();updateClearControl();queueCards();
+ setView(view,false);updateChips();updateClearControl();queueCards();
+ // If a tablet is rotated or the browser is resized across the breakpoint,
+ // restore that screen size's own preference without overwriting either.
+ var onViewportChange=()=>setView(readSavedView(),false);
+ if(mobileViewQuery.addEventListener)mobileViewQuery.addEventListener('change',onViewportChange);
+ else if(mobileViewQuery.addListener)mobileViewQuery.addListener(onViewportChange);
 }
 function initShortcuts(){
  var p=$('dashboardPage');if(!p||$('workspaceDashboardShortcuts'))return;
