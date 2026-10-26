@@ -54,3 +54,39 @@
  .qr-quick-action{min-height:61px}
 }
 @media(prefers-reduced-motion:reduce){.qr-quick-action{transition:none!important}}
+
+/* Availability is always visible; unavailable actions explain why. */
+.qr-quick-availability{
+  margin:0 0 12px;
+  padding:11px 12px;
+  font-size:12px;
+  line-height:1.65;
+  font-weight:700;
+  color:#245775;
+  border:1px solid #c9e1ea;
+  border-left:3px solid #3589b3;
+  border-radius:10px;
+  background:#f1f9fc;
+  overflow-wrap:anywhere;
+}
+.qr-quick-action:disabled,
+.qr-quick-action:disabled:hover{
+  cursor:not-allowed;
+  opacity:1;
+  color:#6d7b83;
+  border-color:#e1e7e9;
+  border-left-color:#c3cdd2;
+  background:#f2f5f5;
+  box-shadow:none;
+  transform:none;
+}
+.qr-quick-action:disabled strong{color:#697981}
+.qr-quick-action:disabled small{color:#7a858a;line-height:1.5}
+@media(max-width:800px){
+  #assetDetail #qrQuickPanel{
+    margin:0 0 14px!important;
+    padding:13px 12px 14px!important;
+  }
+  #assetDetail .qr-quick-availability{font-size:12px;margin-bottom:12px}
+  #assetDetail #qrQuickButtons{gap:8px}
+}
