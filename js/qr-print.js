@@ -217,9 +217,15 @@
   function writeLabelPrintWindow(w,labels,startPosition,title){
     const pages=buildPages(labels,startPosition);
     const pageHtml=pages.map((slots,pageIndex)=>{
-      const cells=slots.map(x=>x
-        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="asset-no">管理No.：${esc(x.asset_no||'未設定')}</div><div class="name">${esc(x.name)}</div></div></div>`
-        :'<div class="label blank"></div>').join('');
+      const cells=slots.map((x,slotIndex)=>{
+        // 各ページで同じ実寸座標に配置し、改ページ後も位置がずれないようにする。
+        const col=slotIndex%3;
+        const row=Math.floor(slotIndex/3);
+        const position=`style="left:${7+67*col}mm;top:${9+31*row}mm"`;
+        return x
+        ?`<div class="label" ${position}><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="asset-no">管理No.：${esc(x.asset_no||'未設定')}</div><div class="name">${esc(x.name)}</div></div></div>`
+        :`<div class="label blank" ${position}></div>`;
+      }).join('');
       return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
     }).join('');
 
@@ -227,8 +233,8 @@
 @page{size:A4 portrait;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
-.sheet{width:210mm;height:297mm;padding:9mm 7mm;display:grid;grid-template-columns:repeat(3,62mm);grid-template-rows:repeat(9,31mm);column-gap:5mm;row-gap:0;margin:0 auto;overflow:hidden}
-.label{width:62mm;height:31mm;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.sheet{position:relative;width:210mm;height:296mm;margin:0 auto;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.label{position:absolute;width:62mm;height:31mm;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .label-inner{position:absolute;left:50%;top:50%;width:31mm;height:62mm;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center;padding:1.4mm 1.2mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .blank{visibility:hidden}
 .company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
