@@ -214,31 +214,71 @@
     return pages;
   }
 
+
+  // A whole-page SVG is a single print object. Chromium's paged layout can
+  // misplace/clamp the ninth row of a 27-cell CSS grid whenever page 2 exists.
+  // Use fixed millimetre coordinates inside each SVG to keep every sheet
+  // identical (including partial first pages / reused label stock).
+  function splitLabelName(value){
+    const chars=Array.from(String(value||'備品').replace(/[\r\n]+/g,' ').trim());
+    if(chars.length<=11)return [chars.join('')];
+    const first=chars.slice(0,11).join('');
+    const rest=chars.slice(11);
+    return [first,rest.length>11?rest.slice(0,10).join('')+'…':rest.join('')];
+  }
+
   function writeLabelPrintWindow(w,labels,startPosition,title){
     const pages=buildPages(labels,startPosition);
-    const pageHtml=pages.map((slots,pageIndex)=>{
-      const cells=slots.map(x=>x
-        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="asset-no">管理No.：${esc(x.asset_no||'未設定')}</div><div class="name">${esc(x.name)}</div></div></div>`
-        :'<div class="label blank"></div>').join('');
-      return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
+    const pageHtml=pages.map((slots)=>{
+      const labelsSvg=slots.map((asset,slotIndex)=>{
+        const col=slotIndex%3,row=Math.floor(slotIndex/3);
+        const left=7+col*67,top=9+row*31;
+        const guide=`<rect class="cut-guide" x="${left}" y="${top}" width="62" height="31"/>`;
+        if(!asset)return guide;
+        const cx=left+31,cy=top+15.5;
+        const names=splitLabelName(asset.name);
+        const nameText=names.map((line,index)=>
+          `<text x="0" y="${names.length===1?19:17.4+index*3.5}" text-anchor="middle" dominant-baseline="central" font-size="${names.length===1?2.7:2.45}" font-weight="800">${esc(line)}</text>`
+        ).join('');
+        // Portrait artwork is rotated within the 62 x 31 mm landscape
+        // label, preserving the orientation of already-printed sheets.
+        return guide+`<g transform="translate(${cx} ${cy}) rotate(-90)">
+          <text x="0" y="-21" text-anchor="middle" dominant-baseline="central" font-size="1.9" font-weight="800">熊本大同青果</text>
+          <image x="-10" y="-18" width="20" height="20" href="${esc(asset.img)}" preserveAspectRatio="xMidYMid meet"/>
+          <text x="0" y="7" text-anchor="middle" dominant-baseline="central" font-size="2.3" font-weight="800" fill="#334155">管理No.：${esc(asset.asset_no||'未設定')}</text>
+          ${nameText}
+        </g>`;
+      }).join('');
+      return `<section class="sheet"><svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="296mm" viewBox="0 0 210 296" aria-label="A4・27面QRシール">${labelsSvg}</svg></section>`;
     }).join('');
 
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(title||'備品QR LBLA4-WPG-27印刷')}</title><style>
+    // Print one 296 mm-tall SVG per A4 sheet, NOT 27 independent grid cells:
+    // Chrome/Edge may fragment the latter and clip labels 25-27 on page one.
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title||'備品QR LBLA4-WPG-27印刷')}</title><style>
 @page{size:A4 portrait;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
-.sheet{width:210mm;height:297mm;padding:9mm 7mm;display:grid;grid-template-columns:repeat(3,62mm);grid-template-rows:repeat(9,31mm);column-gap:5mm;row-gap:0;margin:0 auto;overflow:hidden}
-.label{width:62mm;height:31mm;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.label-inner{position:absolute;left:50%;top:50%;width:31mm;height:62mm;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center;padding:1.4mm 1.2mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
-.blank{visibility:hidden}
-.company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
-.qr{width:20mm;height:20mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.6mm}
-.name{font-size:7.6pt;font-weight:800;line-height:1.1;min-height:7mm;max-height:8.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
-.asset-no{font-size:6.5pt;font-weight:800;line-height:1.07;max-height:5mm;width:100%;overflow:hidden;overflow-wrap:anywhere;color:#334155;margin-top:.3mm}
-.page-break{break-after:page;page-break-after:always}
-@media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
-</style></head><body>${pageHtml}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+.sheet{display:block;position:relative;overflow:hidden;width:210mm;height:296mm;margin:0 auto;break-inside:avoid;page-break-inside:avoid}
+.sheet+.sheet{break-before:page;page-break-before:always}
+.sheet svg{display:block;width:210mm;height:296mm}
+.cut-guide{fill:none;stroke:transparent;stroke-width:.15}
+.print-toolbar{display:none}
+@media screen{
+  body{background:#e9eff2;padding:9mm 0}
+  .print-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px 18px;background:#fff;border:1px solid #d7e2e8;border-radius:12px;padding:14px 18px;margin:0 auto 8mm;width:min(860px,95%);font-size:13px;color:#25465b}
+  .print-toolbar strong{font-size:15px}
+  .print-toolbar span{flex-basis:100%;text-align:center;line-height:1.6}
+  .print-toolbar button{background:#075b9b;color:white;border:0;border-radius:9px;padding:10px 19px;font-size:14px;font-weight:bold;cursor:pointer}
+  .sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15);margin-bottom:9mm}
+  .cut-guide{stroke:#d0dce2}
+}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.cut-guide{stroke:none!important}.print-toolbar{display:none!important}}
+</style></head><body><div class="print-toolbar"><strong>QRシール ${labels.length}件・${pages.length}ページ</strong><button type="button" onclick="window.print()">印刷</button><span>A4縦／倍率100%／余白なし／ヘッダー・フッターなし。ラベル用紙の前に普通紙で位置確認してください。</span></div>${pageHtml}<script>
+window.addEventListener('load',async function(){
+  try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(_e){}
+  setTimeout(function(){window.print()},400);
+});
+<\/script></body></html>`);
     w.document.close();
   }
 
