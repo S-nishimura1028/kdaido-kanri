@@ -218,7 +218,7 @@
     const pages=buildPages(labels,startPosition);
     const pageHtml=pages.map((slots,pageIndex)=>{
       const cells=slots.map(x=>x
-        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="asset-no">管理No.：${esc(x.asset_no||'未設定')}</div><div class="name">${esc(x.name)}</div><div class="location">備品の配置・使用者はQRから確認</div></div></div>`
+        ?`<div class="label"><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="asset-no">管理No.：${esc(x.asset_no||'未設定')}</div><div class="name">${esc(x.name)}</div></div></div>`
         :'<div class="label blank"></div>').join('');
       return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
     }).join('');
@@ -233,8 +233,8 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
 .blank{visibility:hidden}
 .company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
 .qr{width:20mm;height:20mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.6mm}
-.name{font-size:7pt;font-weight:800;line-height:1.1;min-height:7mm;max-height:8.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
-.asset-no{font-size:6pt;font-weight:800;line-height:1.07;max-height:5mm;width:100%;overflow:hidden;overflow-wrap:anywhere;color:#334155;margin-top:.3mm}.location{font-size:5pt;font-weight:650;line-height:1.06;max-height:4.7mm;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#475569;margin-top:.3mm}
+.name{font-size:7.6pt;font-weight:800;line-height:1.1;min-height:7mm;max-height:8.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
+.asset-no{font-size:6.5pt;font-weight:800;line-height:1.07;max-height:5mm;width:100%;overflow:hidden;overflow-wrap:anywhere;color:#334155;margin-top:.3mm}
 .page-break{break-after:page;page-break-after:always}
 @media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
