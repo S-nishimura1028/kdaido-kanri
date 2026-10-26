@@ -103,8 +103,12 @@
       if(f2)uploaded.push(new2);
       intended={photo_path:new1,label_photo_path:new2};
       await verifyCurrentPhotos();
-      const {error}=await c.rpc('update_asset_photos',{
-        p_asset_id:assetId,p_photo_path:new1,p_label_photo_path:new2
+      const {error}=await c.rpc('update_asset_photos_checked',{
+        p_asset_id:assetId,
+        p_photo_path:new1,
+        p_label_photo_path:new2,
+        p_expected_photo_path:old1,
+        p_expected_label_photo_path:old2
       });
       if(error)throw error;
       confirmedCommitted=true;
