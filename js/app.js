@@ -549,10 +549,29 @@
       target.innerHTML='<div class="empty">履歴はありません。</div>';
       return;
     }
+    // Older history rows do not always store the management number. Resolve
+    // those from the existing asset master for display only, including soft-
+    // deleted assets. Do not rewrite or falsify any historical snapshots.
+    const missing=rows.some(h=>!h.asset_no_snapshot||!h.asset_name_snapshot);
+    const assetLookup=new Map();
+    if(missing){
+      try{
+        const request=db.from('assets').select('id,asset_no,name').order('id');
+        for(let offset=0;;offset+=500){
+          const r=await request.range(offset,offset+499);
+          if(r.error)throw r.error;
+          (r.data||[]).forEach(a=>assetLookup.set(String(a.id),a));
+          if((r.data||[]).length<500)break;
+        }
+      }catch(error){
+        console.warn('過去の備品番号の補完ができませんでした',error);
+      }
+    }
     target.innerHTML='<table><thead><tr><th>日時</th><th>備品</th><th>操作</th><th>内容・担当</th></tr></thead><tbody>'+
       rows.map(h=>{
-        const number=h.asset_no_snapshot||'番号未記録';
-        const name=h.asset_name_snapshot||'備品名未記録';
+        const original=assetLookup.get(String(h.asset_id));
+        const number=h.asset_no_snapshot||original?.asset_no||'番号未記録';
+        const name=h.asset_name_snapshot||original?.name||'備品名未記録';
         const time=h.created_at?new Date(h.created_at).toLocaleString('ja-JP'):'日時未記録';
         const detail=h.note||(
           h.before_status!==h.after_status && h.before_status && h.after_status?
@@ -560,8 +579,8 @@
         );
         const who=h.user_name?' <small class="workspace-history-actor">操作担当：'+esc(h.user_name)+'</small>':'';
         return '<tr data-asset-id="'+esc(h.asset_id||'')+
-          '" data-asset-no="'+esc(h.asset_no_snapshot||'')+
-          '" data-asset-name="'+esc(h.asset_name_snapshot||'')+
+          '" data-asset-no="'+esc(number==='番号未記録'?'':number)+
+          '" data-asset-name="'+esc(name==='備品名未記録'?'':name)+
           '"><td data-label="日時">'+esc(time)+'</td>'+
           '<td data-label="備品"><strong class="workspace-history-name">'+esc(number)+
           '</strong><small class="workspace-history-asset">'+esc(name)+'</small></td>'+
@@ -574,6 +593,7 @@
   // existing render/refresh path instead of maintaining a competing cache.
   window.DaidoQrBridge=Object.freeze({
     getClient:()=>db,
+    refreshHistory:()=>loadHistory(),
     refreshAsset:async id=>{
       await loadMasters();
       await loadAssets();
