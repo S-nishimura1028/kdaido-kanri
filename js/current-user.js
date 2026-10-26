@@ -74,20 +74,51 @@
       const users=userResult.data||[];
       const choice=await pickUser(asset,users);
       if(!choice)return;
+      const previousId=asset.assigned_user_id||'';
+      if(choice.id===previousId)return; // No change, no accidental history entry.
+
+      // Lending/returning needs an inspected physical asset and a recorded
+      // condition. Those operations must go through the QR confirmation RPC.
+      if(previousId&&!choice.id&&['使用中','修理中'].includes(asset.status)){
+        window.alert('使用者の解除は、備品詳細の「返却を確認」から行ってください。現物・付属品・故障の状態を確認して記録できます。');
+        return;
+      }
+      if(!previousId&&choice.id){
+        window.alert(asset.status==='未使用'
+          ?'新しい貸出は、備品詳細の「貸し出す」から行ってください。現物と貸出先を確認して記録できます。'
+          :'現在の備品状態では、この画面から使用者を割り当てられません。備品の状態を先に確認してください。');
+        return;
+      }
+      if(!['使用中','修理中'].includes(asset.status)){
+        window.alert('使用者の直接引継ぎは、使用中または修理中の備品だけで行えます。備品の状態を確認してください。');
+        return;
+      }
+
       const user=users.find(u=>u.id===choice.id);
       // An inactive master entry is preserved when not changed.
-      if(choice.id && !user && choice.id!==asset.assigned_user_id)throw new Error('選択された使用者を確認できません。');
-      const payload={
-        assigned_user_id:choice.id||null,
-        user_name:user?.name||(choice.id===asset.assigned_user_id?asset.user_name:null)||null
-      };
-      if(['未使用','使用中'].includes(asset.status)){
-        payload.status=choice.id?'使用中':'未使用';
-      }
-      const {data,error}=await c.from('assets').update(payload)
-        .eq('id',asset.id).eq('is_deleted',false).select('id').single();
+      if(choice.id&&!user)throw new Error('選択された使用者を確認できません。');
+      const previous=users.find(u=>u.id===previousId);
+      const previousName=previous?.name||asset.user_name||'現在の使用者';
+      const ok=window.confirm(
+        '現物を確認し、使用者への直接引継ぎを行いましたか？\\n\\n'+
+        '備品：'+(asset.name||'備品')+'\\n'+
+        '引継ぎ前：'+previousName+'\\n'+
+        '引継ぎ先：'+user.name+'\\n'+
+        '状態：'+asset.status+'（変更なし）\\n\\n'+
+        'この変更を記録する場合のみ「OK」を押してください。'
+      );
+      if(!ok)return;
+
+      // Optimistic concurrency: if someone changed the assignee or status
+      // while the manager was confirming, do not overwrite their operation.
+      let query=c.from('assets').update({
+        assigned_user_id:user.id,
+        user_name:user.name
+      }).eq('id',asset.id).eq('status',asset.status).eq('is_deleted',false);
+      query=previousId?query.eq('assigned_user_id',previousId):query.is('assigned_user_id',null);
+      const {data,error}=await query.select('id').maybeSingle();
       if(error)throw error;
-      if(!data)throw new Error('変更を保存できませんでした。');
+      if(!data)throw new Error('別の管理者が備品を変更しました。詳細を開き直してから再確認してください。');
       location.reload();
     }catch(e){console.error(e);alert('使用者を更新できませんでした。'+(e.message?'\n'+e.message:''));}
     finally{busy=false;}
