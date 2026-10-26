@@ -3,14 +3,11 @@
 
   // Only the asset_users master is authoritative. Never write user_name alone:
   // doing so would disagree with assets.assigned_user_id and the normal editor.
-  let client=null;
   let currentAssetId=new URL(location.href).searchParams.get('asset')||null;
   let busy=false;
-  const db=()=>{
-    if(client)return client;
-    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
-    return (client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY));
-  };
+  // Use the app's authenticated client. A second Supabase client in the same
+  // browser can create competing auth/session-refresh state.
+  const db=()=>window.DaidoQrBridge?.getClient?.()||null;
 
   function pickUser(asset,users){
     return new Promise(resolve=>{
