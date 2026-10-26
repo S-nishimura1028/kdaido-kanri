@@ -24,13 +24,23 @@
     return String(value);
   }
 
+  function validAdminPassword(password){
+    return password.length>=12 && /[A-Z]/.test(password) && /[a-z]/.test(password) &&
+      /[0-9]/.test(password) && /[^A-Za-z0-9\\s]/.test(password) && !/\\s/.test(password);
+  }
+  const adminPasswordHelp='パスワードは12文字以上で、英大文字・英小文字・数字・記号を各1文字以上含めてください。';
   function generatePassword(){
-    const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-    const symbols='!@#$%';
-    const bytes=new Uint32Array(14);crypto.getRandomValues(bytes);
-    let out='';
-    for(let i=0;i<12;i++)out+=chars[bytes[i]%chars.length];
-    return out+symbols[bytes[12]%symbols.length]+String(bytes[13]%10);
+    const groups=['ABCDEFGHJKLMNPQRSTUVWXYZ','abcdefghijkmnopqrstuvwxyz','23456789','!@#$%'];
+    const source=groups.join('');
+    const values=new Uint32Array(32);
+    crypto.getRandomValues(values);
+    const chars=groups.map((group,i)=>group[values[i]%group.length]);
+    for(let i=4;i<16;i++)chars.push(source[values[i]%source.length]);
+    for(let i=chars.length-1;i>0;i--){
+      const j=values[i+16]%(i+1);
+      [chars[i],chars[j]]=[chars[j],chars[i]];
+    }
+    return chars.join('');
   }
 
   function openDialog(){
@@ -51,7 +61,7 @@
       </label>
       <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
         <label style="display:flex;flex-direction:column;gap:7px;font-weight:700;font-size:14px">初期パスワード
-          <input id="simpleAdminPassword" type="text" autocomplete="new-password" placeholder="8文字以上">
+          <input id="simpleAdminPassword" type="text" autocomplete="new-password" placeholder="12文字以上・英大小文字・数字・記号">
         </label>
         <button type="button" class="secondary" id="simpleGeneratePassword" style="min-height:44px">自動生成</button>
       </div>
@@ -76,7 +86,7 @@
       err.textContent='';
       const em=email.value.trim().toLowerCase(),pw=password.value;
       if(!em||!email.checkValidity()){err.textContent='正しいメールアドレスを入力してください。';email.focus();return;}
-      if(pw.length<8){err.textContent='初期パスワードは8文字以上にしてください。';password.focus();return;}
+      if(!validAdminPassword(pw)){err.textContent=adminPasswordHelp;password.focus();return;}
       save.disabled=true;save.textContent='作成中…';
       try{
         const c=db();if(!c)throw new Error('Supabaseに接続できません。');
