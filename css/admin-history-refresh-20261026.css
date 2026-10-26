@@ -1,0 +1,21 @@
+/* Admin history: clear, accessible refresh feedback on both desktop and mobile. */
+#workspaceAdminHistory .workspace-history-meta{
+ display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;
+ margin:0 0 14px;min-width:0;
+}
+#workspaceAdminHistory #workspaceHistoryRefresh{
+ display:inline-flex;align-items:center;justify-content:center;
+ padding:10px 15px;min-height:44px;border-radius:10px;
+ font-size:12px;font-weight:800;line-height:1.4;
+ white-space:normal;
+}
+#workspaceAdminHistory #workspaceHistoryRefresh:disabled{opacity:.6;cursor:wait}
+#workspaceAdminHistory #workspaceHistoryRefreshState{
+ color:#5c7985;font-size:12px;line-height:1.55;min-width:0;
+ overflow-wrap:anywhere;
+}
+@media(max-width:600px){
+ #workspaceAdminHistory .workspace-history-meta{align-items:stretch;flex-direction:column;gap:6px}
+ #workspaceAdminHistory #workspaceHistoryRefresh{width:100%}
+ #workspaceAdminHistory #workspaceHistoryRefreshState{font-size:11.5px}
+}
