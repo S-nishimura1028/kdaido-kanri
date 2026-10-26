@@ -1,0 +1,71 @@
+/* Final validation: clearer assignment lock and usable photo editor on phones. */
+#assetForm #currentUserId:disabled{
+  background:#edf3f5;
+  border-color:#d7e2e5;
+  color:#456873;
+  opacity:1;
+  cursor:not-allowed;
+}
+#assetForm #currentUserId:disabled + small{
+  color:#306b84!important;
+  font-weight:720!important;
+  line-height:1.6!important;
+}
+@media(max-width:800px){
+  #employeePhotoDialog{
+    box-sizing:border-box!important;
+    width:calc(100vw - 12px)!important;
+    max-width:calc(100vw - 12px)!important;
+    max-height:calc(100dvh - 16px)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    border-radius:16px!important;
+  }
+  #employeePhotoDialog #employeePhotoForm{
+    box-sizing:border-box;
+    min-width:0;max-width:100%;padding:14px 14px 16px!important;
+  }
+  #employeePhotoDialog .dialog-head{
+    position:sticky;top:0;z-index:4;background:#fff;
+    border-bottom:1px solid #dce9eb;
+    padding:7px 0 11px;margin-bottom:14px!important;
+  }
+  #employeePhotoDialog .close{min-width:46px;min-height:46px;flex:0 0 46px}
+  #employeePhotoDialog #employeePhotoCurrent1,
+  #employeePhotoDialog #employeePhotoCurrent2{
+    box-sizing:border-box;
+    max-width:100%;min-width:0;height:150px!important;
+  }
+  #employeePhotoDialog #employeePhotoForm>div[style*="grid-template-columns"]{
+    min-width:0;gap:9px!important;
+  }
+  #employeePhotoDialog #employeePhotoForm>label{
+    font-size:13px;line-height:1.55;min-width:0;
+  }
+  #employeePhotoDialog input[type=file]{
+    box-sizing:border-box;
+    display:block;width:100%;max-width:100%;min-width:0;
+    min-height:51px;font-size:14px;padding:10px;
+  }
+  #employeePhotoDialog .dialog-actions{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:9px!important;position:sticky!important;bottom:0;z-index:3;
+    padding:11px 0 calc(7px + env(safe-area-inset-bottom,0px))!important;
+    background:#fff;border-top:1px solid #dce9eb;
+    box-shadow:0 -6px 14px rgba(255,255,255,.96);
+  }
+  #employeePhotoDialog .dialog-actions button{
+    width:100%;min-width:0;min-height:49px;padding:10px 7px;
+    white-space:normal;line-height:1.4;font-size:13px;
+  }
+  #employeePhotoDialog #employeePhotoError:not(:empty){
+    padding:10px 11px;border-radius:9px;background:#fff3ed;
+    border:1px solid #eccdbf;font-size:12px;line-height:1.6;
+  }
+}
+@media(max-width:370px){
+  #employeePhotoDialog #employeePhotoCurrent1,
+  #employeePhotoDialog #employeePhotoCurrent2{height:117px!important}
+  #employeePhotoDialog #employeePhotoForm{padding:12px 11px 13px!important}
+}
