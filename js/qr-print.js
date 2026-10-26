@@ -53,7 +53,7 @@
       const fallbackNo=parts.length>1?parts[0]:'';
       const info=await fetchAssetPrintInfo(activeAssetId,fallbackName,fallbackNo);
       const img=canvas.toDataURL('image/png');
-      printSingle(info.name,info.asset_no,info.location,img,err);
+      await printSingle(info.name,info.asset_no,info.location,img,err);
     });
 
     const hint=document.createElement('div');
@@ -65,13 +65,14 @@
     area.insertBefore(wrap,document.getElementById('qrError'));
   }
 
-  function printSingle(name,assetNo,location,img,err){
+  async function printSingle(name,assetNo,location,img,err){
     const startPosition=chooseStartPosition();
     if(startPosition===null)return;
     const w=window.open('','_blank');
     if(!w){ if(err) err.textContent='印刷画面を開けませんでした。ポップアップを許可してください。'; return; }
     const labels=[{name:name||'備品',asset_no:assetNo||null,location:location||null,img}];
-    writeLabelPrintWindow(w,labels,startPosition,`${name||'備品'} QR印刷`);
+    try{await writeLabelPrintWindow(w,labels,startPosition,`${name||'備品'} QR印刷`);}
+    catch(e){if(err)err.textContent=e.message||'印刷データを作成できませんでした。';w.close();}
   }
 
   function headerIndex(table,label){
@@ -214,8 +215,112 @@
     return pages;
   }
 
-  function writeLabelPrintWindow(w,labels,startPosition,title){
-    const pages=buildPages(labels,startPosition);
+  // ブラウザの改ページ処理が回転済みHTMLを分割するため、
+  // QRと文字をシール1枚ごとに画像化してから印刷する。
+  const LABEL_PX_PER_MM=12;
+  const labelMm=mm=>mm*LABEL_PX_PER_MM;
+  const labelFont=pt=>Math.round(pt*(25.4/72)*LABEL_PX_PER_MM*10)/10;
+
+  function labelText(ctx,text,x,y,fontPt,maxWidth,color='#111'){
+    const value=String(text||'');
+    let size=labelFont(fontPt);
+    ctx.fillStyle=color;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    while(size>labelFont(5.1)){
+      ctx.font='800 '+size+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+      if(ctx.measureText(value).width<=maxWidth)break;
+      size-=0.8;
+    }
+    ctx.font='800 '+size+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+    ctx.fillText(value,x,y,maxWidth);
+  }
+
+  function labelNameLines(ctx,name,maxWidth){
+    const value=String(name||'備品').trim()||'備品';
+    for(const pt of [7.6,7.2,6.8,6.4,6,5.6,5.2]){
+      ctx.font='800 '+labelFont(pt)+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+      const lines=[''];
+      for(const letter of [...value]){
+        const last=lines.length-1;
+        if(lines[last]&&ctx.measureText(lines[last]+letter).width>maxWidth){
+          lines.push(letter);
+        }else{
+          lines[last]+=letter;
+        }
+      }
+      if(lines.length<=3)return {lines,pt};
+    }
+    ctx.font='800 '+labelFont(5.2)+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+    const lines=[''];
+    for(const letter of [...value]){
+      const last=lines.length-1;
+      if(lines[last]&&ctx.measureText(lines[last]+letter).width>maxWidth){
+        if(lines.length>=3){
+          while(lines[2]&&ctx.measureText(lines[2]+'…').width>maxWidth)lines[2]=lines[2].slice(0,-1);
+          lines[2]+='…';
+          return {lines,pt:5.2};
+        }
+        lines.push(letter);
+      }else{
+        lines[last]+=letter;
+      }
+    }
+    return {lines,pt:5.2};
+  }
+
+  async function rasterizeLabel(label){
+    const qr=new Image();
+    await new Promise((resolve,reject)=>{
+      qr.onload=resolve;
+      qr.onerror=()=>reject(new Error('QR画像を読み込めませんでした。'));
+      qr.src=label.img;
+    });
+    // 縦31×62mmで組版して90度回転。最終画像は実寸62×31mm。
+    const portrait=document.createElement('canvas');
+    portrait.width=Math.round(labelMm(31));
+    portrait.height=Math.round(labelMm(62));
+    const ctx=portrait.getContext('2d');
+    if(!ctx)throw new Error('印刷用の画像を生成できませんでした。');
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,portrait.width,portrait.height);
+    const width=portrait.width;
+    const name=labelNameLines(ctx,label.name||'備品',labelMm(28.6));
+    const lineHeight=labelMm(3);
+    const nameHeight=Math.max(labelMm(6),name.lines.length*lineHeight);
+    const total=labelMm(2.5+0.8+20+0.7+3.4+0.5)+nameHeight;
+    let y=(portrait.height-total)/2;
+    labelText(ctx,'熊本大同青果',width/2,y+labelMm(1.25),5.4,labelMm(28.6));
+    y+=labelMm(3.3);
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(qr,(width-labelMm(20))/2,y,labelMm(20),labelMm(20));
+    y+=labelMm(20.7);
+    labelText(ctx,'管理No.：'+(label.asset_no||'未設定'),width/2,y+labelMm(1.7),6.5,labelMm(28.6),'#334155');
+    y+=labelMm(3.9);
+    name.lines.forEach((line,i)=>labelText(ctx,line,width/2,
+      y+(i+0.5)*lineHeight+(nameHeight-name.lines.length*lineHeight)/2,
+      name.pt,labelMm(28.6)
+    ));
+    const output=document.createElement('canvas');
+    output.width=Math.round(labelMm(62));
+    output.height=Math.round(labelMm(31));
+    const out=output.getContext('2d');
+    if(!out)throw new Error('印刷用の画像を生成できませんでした。');
+    out.translate(0,output.height);
+    out.rotate(-Math.PI/2);
+    out.drawImage(portrait,0,0);
+    return output.toDataURL('image/png');
+  }
+
+  async function writeLabelPrintWindow(w,labels,startPosition,title){
+    const imageCache=new Map();
+    const prepared=[];
+    for(const item of labels){
+      const key=[item.img,item.name,item.asset_no].join('|');
+      if(!imageCache.has(key))imageCache.set(key,await rasterizeLabel(item));
+      prepared.push({...item,printImg:imageCache.get(key)});
+    }
+    const pages=buildPages(prepared,startPosition);
     const pageHtml=pages.map((slots,pageIndex)=>{
       const cells=slots.map((x,slotIndex)=>{
         // 各ページで同じ実寸座標に配置し、改ページ後も位置がずれないようにする。
@@ -223,7 +328,7 @@
         const row=Math.floor(slotIndex/3);
         const position=`style="left:${7+67*col}mm;top:${9+31*row}mm"`;
         return x
-        ?`<div class="label" ${position}><div class="label-inner"><div class="company">熊本大同青果</div><img class="qr" src="${x.img}" alt="QR"><div class="asset-no">管理No.：${esc(x.asset_no||'未設定')}</div><div class="name">${esc(x.name)}</div></div></div>`
+        ?`<div class="label" ${position}><img class="print-label-image" src="${x.printImg}" alt="${esc((x.asset_no||'')+' '+x.name)}"></div>`
         :`<div class="label blank" ${position}></div>`;
       }).join('');
       return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
@@ -235,12 +340,8 @@
 html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 .sheet{position:relative;width:210mm;height:296mm;margin:0 auto;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .label{position:absolute;width:62mm;height:31mm;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.label-inner{position:absolute;left:50%;top:50%;width:31mm;height:62mm;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center;padding:1.4mm 1.2mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.print-label-image{display:block;width:62mm;height:31mm;max-width:none;max-height:none;object-fit:fill}
 .blank{visibility:hidden}
-.company{font-size:5.4pt;font-weight:800;line-height:1;margin-bottom:.7mm;white-space:nowrap}
-.qr{width:20mm;height:20mm;image-rendering:pixelated;flex:0 0 auto;margin-bottom:.6mm}
-.name{font-size:7.6pt;font-weight:800;line-height:1.1;min-height:7mm;max-height:8.5mm;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
-.asset-no{font-size:6.5pt;font-weight:800;line-height:1.07;max-height:5mm;width:100%;overflow:hidden;overflow-wrap:anywhere;color:#334155;margin-top:.3mm}
 .page-break{break-after:page;page-break-after:always}
 @media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
@@ -294,7 +395,7 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
         labels.push({name:info.name||'備品',asset_no:info.asset_no||null,location:info.location||null,img:c.toDataURL('image/png')});
       }
       w.document.open();
-      writeLabelPrintWindow(w,labels,startPosition,'備品QR LBLA4-WPG-27・27面印刷');
+      await writeLabelPrintWindow(w,labels,startPosition,'備品QR LBLA4-WPG-27・27面印刷');
     }catch(err){
       console.error('QRまとめ印刷',err);
       try{
