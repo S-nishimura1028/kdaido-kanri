@@ -66,3 +66,24 @@
  #assetDialog,#detailDialog{max-height:calc(100dvh - 8px)!important}
  #assetDialog .dialog-head,#detailDialog .dialog-head{padding:7px 0!important}
 }
+
+/* Mobile form: a genuine fixed action area, not a sticky footer which appears
+   only after scrolling to the bottom of a long form. Scroll fields only. */
+@media(max-width:800px){
+ #assetDialog{height:calc(100dvh - 16px)!important;overflow:hidden!important}
+ #assetForm.dialog-card{
+   height:100%;max-height:100%;min-height:0;
+   display:flex;flex-direction:column;overflow:hidden;
+ }
+ #assetForm .dialog-head{position:relative!important;top:auto!important;flex:0 0 auto}
+ #assetForm .form-grid{
+   flex:1 1 auto;min-height:0;overflow-y:auto;
+   overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+   padding:0 3px 12px 0;scroll-padding-top:8px;
+ }
+ #assetForm #assetFormError{flex:0 0 auto}
+ #assetForm .dialog-actions{
+   flex:0 0 auto;position:relative!important;bottom:auto!important;
+   margin-top:7px!important;
+ }
+}
