@@ -2,13 +2,11 @@
   'use strict';
 
   let currentAssetId=new URL(location.href).searchParams.get('asset')||null;
-  let client=null;
 
+  // Reuse the main authenticated client rather than starting a competing
+  // GoTrue session-refresh loop for every photo update.
   function getClient(){
-    if(client) return client;
-    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY) return null;
-    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-    return client;
+    return window.DaidoQrBridge?.getClient?.()||null;
   }
 
   function ensureDialog(){
@@ -29,8 +27,12 @@
       <div id="employeePhotoError" class="error"></div>
     </form>`;
     document.body.appendChild(d);
-    d.querySelector('#employeePhotoClose').onclick=()=>d.close();
-    d.querySelector('#employeePhotoCancel').onclick=()=>d.close();
+    const closeSafely=()=>{if(!d.querySelector('#employeePhotoSave').disabled)d.close();};
+    d.querySelector('#employeePhotoClose').onclick=closeSafely;
+    d.querySelector('#employeePhotoCancel').onclick=closeSafely;
+    d.addEventListener('cancel',e=>{
+      if(d.querySelector('#employeePhotoSave').disabled)e.preventDefault();
+    });
     d.querySelector('#employeePhotoForm').addEventListener('submit',savePhotos);
     return d;
   }
@@ -46,7 +48,7 @@
     const detailId=document.getElementById('detailDialog')?.dataset.assetId||currentAssetId;
     if(!detailId){alert('備品を特定できませんでした。');return;}
     const db=getClient();if(!db){alert('接続準備ができていません。');return;}
-    const {data,error}=await db.from('assets').select('id,asset_no,name,photo_path,label_photo_path').eq('id',detailId).single();
+    const {data,error}=await db.from('assets').select('id,asset_no,name,photo_path,label_photo_path').eq('id',detailId).eq('is_deleted',false).single();
     if(error||!data){alert('備品情報を取得できませんでした。');return;}
     const d=ensureDialog();d.dataset.assetId=data.id;d.dataset.photoPath=data.photo_path||'';d.dataset.labelPhotoPath=data.label_photo_path||'';
     d.querySelector('#employeePhotoTitle').textContent=`${data.asset_no||''} / ${data.name||''}`;
@@ -59,9 +61,13 @@
   }
 
   async function upload(db,assetId,file,kind){
-    if(!file)return null;if(file.size>10*1024*1024)throw new Error('写真は1枚10MB以下にしてください。');
+    if(!file)return null;
+    if(file.size>10*1024*1024)throw new Error('写真は1枚10MB以下にしてください。');
+    if(!['image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(file.type))
+      throw new Error('JPEG・PNG・WebP・HEIC形式の写真を選択してください。');
     const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'').toLowerCase()||'jpg';
-    const path=`${assetId}/${kind}-${Date.now()}.${ext}`;
+    const random=window.crypto?.randomUUID?.().slice(0,8)||Math.random().toString(36).slice(2,10);
+    const path=`${assetId}/${kind}-${Date.now()}-${random}.${ext}`;
     const {error}=await db.storage.from('asset-photos').upload(path,file,{contentType:file.type||undefined,upsert:false});if(error)throw error;return path;
   }
 
@@ -73,20 +79,35 @@
     err.textContent='';save.disabled=true;save.textContent='保存中…';
     const c=getClient();
     const uploaded=[];
+    let intended=null,confirmedCommitted=false;
     try{
+      if(!c)throw new Error('ログインを確認できません。画面を開き直してください。');
       const assetId=d.dataset.assetId;
       const old1=d.dataset.photoPath||null,old2=d.dataset.labelPhotoPath||null;
       const f1=d.querySelector('#employeePhotoFile1').files?.[0]||null;
       const f2=d.querySelector('#employeePhotoFile2').files?.[0]||null;
       if(!f1&&!f2)throw new Error('更新する写真を1枚以上選んでください。');
+      // Reject an edit based on obsolete photo paths before uploading files.
+      async function verifyCurrentPhotos(){
+        const {data,error}=await c.from('assets')
+          .select('photo_path,label_photo_path').eq('id',assetId).eq('is_deleted',false).maybeSingle();
+        if(error)throw error;
+        if(!data)throw new Error('備品が見つかりません。画面を開き直してください。');
+        if((data.photo_path||null)!==old1||(data.label_photo_path||null)!==old2)
+          throw new Error('写真が別の管理者によって更新されています。画面を開き直し、最新の写真を確認してください。');
+      }
+      await verifyCurrentPhotos();
       const new1=f1?await upload(c,assetId,f1,'outside'):old1;
       if(f1)uploaded.push(new1);
       const new2=f2?await upload(c,assetId,f2,'label'):old2;
       if(f2)uploaded.push(new2);
+      intended={photo_path:new1,label_photo_path:new2};
+      await verifyCurrentPhotos();
       const {error}=await c.rpc('update_asset_photos',{
         p_asset_id:assetId,p_photo_path:new1,p_label_photo_path:new2
       });
       if(error)throw error;
+      confirmedCommitted=true;
       // Do not delete the old photos until the asset row points at the new ones.
       const obsolete=[f1&&old1&&old1!==new1?old1:null,f2&&old2&&old2!==new2?old2:null].filter(Boolean);
       if(obsolete.length){
@@ -103,6 +124,11 @@
           const {data, error:readError}=await c.from('assets')
             .select('photo_path,label_photo_path').eq('id',d.dataset.assetId).maybeSingle();
           if(!readError&&data){
+            // A timeout can hide a successful RPC. Do not call it a failure
+            // or delete its uploads when both paths already match the intent.
+            confirmedCommitted=Boolean(intended&&
+              (data.photo_path||null)===intended.photo_path&&
+              (data.label_photo_path||null)===intended.label_photo_path);
             const referenced=new Set([data.photo_path,data.label_photo_path].filter(Boolean));
             const abandoned=uploaded.filter(path=>!referenced.has(path));
             if(abandoned.length){
@@ -111,6 +137,12 @@
             }
           }
         }catch(cleanupError){console.warn('new photo cleanup skipped',cleanupError);}
+      }
+      if(confirmedCommitted){
+        d.close();
+        window.alert('写真は保存されています。画面を再読み込みして確認してください。');
+        location.reload();
+        return;
       }
       err.textContent=ex.message||'写真の保存に失敗しました。';
     }finally{
