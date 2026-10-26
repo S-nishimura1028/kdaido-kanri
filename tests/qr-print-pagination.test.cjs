@@ -8,19 +8,38 @@ const source = fs.readFileSync(path.join(__dirname, '../js/qr-print.js'), 'utf8'
 const start = source.indexOf('  function buildPages(');
 const end = source.indexOf('\n  async function loadSelectedAssetInfo(', start);
 assert.ok(start >= 0 && end > start, 'QR pagination helpers should exist');
+const mockCanvasContext = () => ({
+  fillRect() {}, drawImage() {}, fillText() {}, translate() {}, rotate() {},
+  measureText(text) {return {width: String(text).length * 12};},
+  fillStyle: '', textAlign: '', textBaseline: '', font: '', imageSmoothingEnabled: false
+});
+const mockDocument = {
+  createElement(tag) {
+    assert.equal(tag,'canvas');
+    return {
+      width:0,height:0,
+      getContext(){return mockCanvasContext();},
+      toDataURL(){return 'data:image/png;base64,LABEL';}
+    };
+  }
+};
+class FakeImage {
+  set src(value){this.value=value; if(this.onload)this.onload();}
+}
 const helpers = vm.runInNewContext(
   '(function(){ const esc = value => String(value); ' + source.slice(start, end) +
-  '; return {buildPages,writeLabelPrintWindow}; })()'
+  '; return {buildPages,writeLabelPrintWindow}; })()',
+  {document:mockDocument,Image:FakeImage}
 );
 
-function render(count, startPosition) {
+async function render(count, startPosition) {
   const labels = Array.from({length: count}, (_, index) => ({
     name: '備品 ' + (index + 1),
     asset_no: 'KD-' + String(index + 1).padStart(4, '0'),
     img: 'data:image/png;base64,TEST'
   }));
   let html = '';
-  helpers.writeLabelPrintWindow({
+  await helpers.writeLabelPrintWindow({
     document: { write(value) { html = value; }, close() {} }
   }, labels, startPosition, 'テスト印刷');
   const sheets = html.split(/<section class="sheet(?: page-break)?"?>/).slice(1)
@@ -28,8 +47,8 @@ function render(count, startPosition) {
   return {html, sheets};
 }
 
-test('28 labels become two exactly 27-slot pages', () => {
-  const {sheets} = render(28, 1);
+test('28 labels become two exactly 27-slot pages', async () => {
+  const {sheets} = await render(28, 1);
   assert.equal(sheets.length, 2);
   for (const sheet of sheets) {
     assert.equal((sheet.match(/<div class="label(?: blank)?"/g) || []).length, 27);
@@ -40,13 +59,13 @@ test('28 labels become two exactly 27-slot pages', () => {
   assert.match(sheets[1], /<div class="label" style="left:7mm;top:9mm"/);
 });
 
-test('54 labels become two full pages, 55 labels become three pages', () => {
-  assert.equal(render(54, 1).sheets.length, 2);
-  assert.equal(render(55, 1).sheets.length, 3);
+test('54 labels become two full pages, 55 labels become three pages', async () => {
+  assert.equal((await render(54, 1)).sheets.length, 2);
+  assert.equal((await render(55, 1)).sheets.length, 3);
 });
 
-test('starting at an intermediate slot affects only the first page', () => {
-  const {sheets} = render(28, 12);
+test('starting at an intermediate slot affects only the first page', async () => {
+  const {sheets} = await render(28, 12);
   assert.equal(sheets.length, 2);
   assert.equal((sheets[0].match(/class="label blank"/g) || []).length, 11);
   assert.match(sheets[0], /KD-0016/);
@@ -56,11 +75,20 @@ test('starting at an intermediate slot affects only the first page', () => {
   assert.match(sheets[0], /<div class="label" style="left:141mm;top:102mm"/);
 });
 
-test('page boundaries cannot alter absolute label coordinates', () => {
-  const {html} = render(28, 1);
+test('page boundaries cannot alter absolute label coordinates', async () => {
+  const {html} = await render(28, 1);
   assert.match(html, /@page\{size:A4 portrait;margin:0\}/);
   assert.match(html, /\.sheet\{position:relative;width:210mm;height:296mm;/);
   assert.match(html, /\.label\{position:absolute;width:62mm;height:31mm;/);
   assert.match(html, /\.page-break\{break-after:page;page-break-after:always\}/);
   assert.doesNotMatch(html, /\.sheet\{[^\n]*height:297mm/);
+});
+
+test('QR and all text are combined into one image per printed label', async () => {
+  const {sheets,html}=await render(28,1);
+  assert.equal((html.match(/class="print-label-image"/g)||[]).length,28);
+  assert.doesNotMatch(html,/class="label-inner"/);
+  assert.doesNotMatch(html,/\.label-inner\{[^}]*rotate/);
+  assert.match(sheets[0],/src="data:image\/png;base64,LABEL"/);
+  assert.match(sheets[1],/src="data:image\/png;base64,LABEL"/);
 });
