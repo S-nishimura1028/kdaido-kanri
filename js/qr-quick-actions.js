@@ -138,6 +138,39 @@ function availableOps(a){
   if(a.status!=='廃棄')arr.push({id:'move',label:'場所を変更',desc:'現物の移動先を登録'});
   return arr;
 }
+// Make unavailable choices visible (but disabled), so a manager always knows
+// why the lend button is missing rather than assuming the screen is broken.
+const actionOrder=[
+  {id:'lend',label:'貸し出す'},
+  {id:'return',label:'返却を確認'},
+  {id:'fault',label:'故障を報告'},
+  {id:'move',label:'場所を変更'}
+];
+function unavailableReason(asset,id){
+  if(asset.status==='廃棄')return '廃棄済みのため操作できません';
+  if(id==='lend')return asset.status==='未使用'
+    ? '使用者が割り当て済みです'
+    : '未使用・使用者なしの備品のみ';
+  if(id==='return')return asset.assigned_user_id
+    ? '使用中・修理中の備品のみ'
+    : '返却する使用者がいません';
+  if(id==='fault')return asset.status==='修理中'
+    ? 'すでに修理中です'
+    : '未使用・使用中の備品のみ';
+  if(id==='move')return '廃棄済みのため変更不可';
+  return '現在は操作できません';
+}
+function lendingGuidance(asset){
+  if(asset.status==='未使用'&&!asset.assigned_user_id)
+    return '貸出できます。「貸し出す」で使用者を選び、現物確認後に確定してください。';
+  if(asset.status==='使用中')
+    return '現在は使用中のため新たな貸出はできません。返却後に貸し出すか、直接引継ぎなら「使用者変更」を選択してください。';
+  if(asset.status==='修理中')
+    return '現在は修理中のため貸出できません。修理完了や返却状況を確認してください。';
+  if(asset.status==='廃棄')
+    return '廃棄済みの備品は貸し出せません。';
+  return '使用者の割り当て状況を確認してください。';
+}
 function getDraft(draft){
   const action=draft.action,asset=draft.asset;
   const chosen=$('qrQuickChoice')?.value||null;
@@ -229,31 +262,40 @@ async function enhanceDetail(){
   if(!host||!id||!dialog.open||host.querySelector('#qrQuickPanel'))return;
   const panel=document.createElement('section');panel.id='qrQuickPanel';panel.className='qr-quick-panel';
   panel.innerHTML='<div class="qr-quick-heading"><div><small>現物確認からそのまま登録</small><h4>QRクイック操作</h4></div><span class="qr-quick-tag">管理者専用</span></div><div id="qrQuickButtons" class="qr-quick-buttons"><p class="qr-quick-loading">現在の状態を確認しています…</p></div><p class="qr-quick-footnote">各操作は内容を確認してから確定します。管理番号やQRシールは変更しません。</p>';
-  const actions=host.querySelector('.dialog-actions');if(actions)host.insertBefore(panel,actions);else host.appendChild(panel);
+  const actions=host.querySelector('.dialog-actions');
+  const mobile=window.matchMedia?.('(max-width:800px)').matches;
+  const target=mobile?host.querySelector('#workspaceDetailTabs')||actions:actions;
+  if(target)host.insertBefore(panel,target);else host.appendChild(panel);
   const seq=++panelSequence;
   try{
     const asset=await readAsset(id);
     if(seq!==panelSequence||!panel.isConnected)return;
     const options=availableOps(asset);
+    const allowed=new Map(options.map(o=>[o.id,o]));
     const buttons=panel.querySelector('#qrQuickButtons');buttons.replaceChildren();
-    if(!options.length){
-      const empty=document.createElement('p');empty.className='qr-quick-loading';
-      empty.textContent='この備品に実行できるクイック操作はありません。';
-      buttons.appendChild(empty);
-    }else{
-      options.forEach(option=>{
-        const button=document.createElement('button');
-        button.type='button';button.className='qr-quick-action qr-quick-'+option.id;
-        button.dataset.qrOperation=option.id;
-        const strong=document.createElement('strong');strong.textContent=option.label;
-        const small=document.createElement('small');small.textContent=option.desc;
-        button.append(strong,small);buttons.appendChild(button);
-      });
-      buttons.onclick=e=>{
-        const button=e.target.closest('[data-qr-operation]');
-        if(button)open(button.dataset.qrOperation,id);
-      };
-    }
+    const guide=document.createElement('p');
+    guide.className='qr-quick-availability';
+    guide.textContent=lendingGuidance(asset);
+    buttons.insertAdjacentElement('beforebegin',guide);
+    actionOrder.forEach(action=>{
+      const option=allowed.get(action.id);
+      const button=document.createElement('button');
+      button.type='button';button.className='qr-quick-action qr-quick-'+action.id;
+      button.dataset.qrOperation=action.id;
+      const strong=document.createElement('strong');strong.textContent=action.label;
+      const small=document.createElement('small');
+      small.textContent=option?.desc||unavailableReason(asset,action.id);
+      if(!option){
+        button.disabled=true;
+        button.setAttribute('aria-label',action.label+'：'+small.textContent);
+        button.title=small.textContent;
+      }
+      button.append(strong,small);buttons.appendChild(button);
+    });
+    buttons.onclick=e=>{
+      const button=e.target.closest('[data-qr-operation]');
+      if(button&&!button.disabled)open(button.dataset.qrOperation,id);
+    };
   }catch(e){
     const holder=panel.querySelector('#qrQuickButtons');
     if(holder)holder.textContent='操作を表示できません。ログイン・通信状態を確認してください。';
