@@ -71,7 +71,12 @@
       tabs.scrollIntoView({behavior:'auto',block:'nearest'});
     });
     overview.append(photos);
-    host.insertBefore(overview,tabs);
+    // QR operations appear directly after the overview on phones. Handle
+    // either script execution order without changing desktop arrangement.
+    const onPhone=window.matchMedia?.('(max-width:800px)').matches;
+    const quickPanel=host.querySelector('#qrQuickPanel');
+    if(onPhone&&quickPanel)host.insertBefore(quickPanel,tabs);
+    host.insertBefore(overview,onPhone?(quickPanel||tabs):tabs);
 
     const more=make('button','mobile-detail-more-toggle','登録情報をすべて見る');
     more.type='button';
