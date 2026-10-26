@@ -100,11 +100,11 @@
       const previous=users.find(u=>u.id===previousId);
       const previousName=previous?.name||asset.user_name||'現在の使用者';
       const ok=window.confirm(
-        '現物を確認し、使用者への直接引継ぎを行いましたか？\\n\\n'+
-        '備品：'+(asset.name||'備品')+'\\n'+
-        '引継ぎ前：'+previousName+'\\n'+
-        '引継ぎ先：'+user.name+'\\n'+
-        '状態：'+asset.status+'（変更なし）\\n\\n'+
+        '現物を確認し、使用者への直接引継ぎを行いましたか？\n\n'+
+        '備品：'+(asset.name||'備品')+'\n'+
+        '引継ぎ前：'+previousName+'\n'+
+        '引継ぎ先：'+user.name+'\n'+
+        '状態：'+asset.status+'（変更なし）\n\n'+
         'この変更を記録する場合のみ「OK」を押してください。'
       );
       if(!ok)return;
