@@ -106,20 +106,30 @@
     head.appendChild(b);
   }
 
+  function validAdminPassword(password){
+    return password.length>=12 && /[A-Z]/.test(password) && /[a-z]/.test(password) &&
+      /[0-9]/.test(password) && /[^A-Za-z0-9\\s]/.test(password) && !/\\s/.test(password);
+  }
+  const adminPasswordHelp='パスワードは12文字以上で、英大文字・英小文字・数字・記号を各1文字以上含めてください。';
   function generatePassword(){
-    const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-    const symbols='!@#$%';
-    const bytes=new Uint32Array(12);crypto.getRandomValues(bytes);
-    let out='';for(let i=0;i<10;i++)out+=chars[bytes[i]%chars.length];
-    out+=symbols[bytes[10]%symbols.length]+String(bytes[11]%10);
-    return out;
+    const groups=['ABCDEFGHJKLMNPQRSTUVWXYZ','abcdefghijkmnopqrstuvwxyz','23456789','!@#$%'];
+    const source=groups.join('');
+    const values=new Uint32Array(32);
+    crypto.getRandomValues(values);
+    const chars=groups.map((group,i)=>group[values[i]%group.length]);
+    for(let i=4;i<16;i++)chars.push(source[values[i]%source.length]);
+    for(let i=chars.length-1;i>0;i--){
+      const j=values[i+16]%(i+1);
+      [chars[i],chars[j]]=[chars[j],chars[i]];
+    }
+    return chars.join('');
   }
 
   function openAdminPasswordDialog(target){
     document.getElementById('adminPasswordOverlay')?.remove();
     const overlay=document.createElement('div');overlay.id='adminPasswordOverlay';overlay.className='admin-create-overlay';
     const card=document.createElement('div');card.className='admin-create-card';
-    card.innerHTML=`<h3>管理者パスワード変更</h3><p><strong>${esc(target.name||'管理者')}</strong><br>${esc(target.email||'')}</p><div class="password-line"><label style="margin:0">新しいパスワード<input id="adminResetPassword" type="password" autocomplete="new-password" placeholder="8文字以上"></label><button type="button" class="secondary" id="generateResetPasswordBtn">自動生成</button></div><label style="margin-top:12px">確認入力<input id="adminResetPasswordConfirm" type="password" autocomplete="new-password" placeholder="もう一度入力"></label><div style="font-size:12px;color:var(--muted);margin-top:7px">変更後は新しいパスワードを本人へ安全な方法で伝えてください。</div><div id="adminResetError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminResetBtn">キャンセル</button><button type="button" class="primary" id="saveAdminResetBtn">パスワードを変更</button></div>`;
+    card.innerHTML=`<h3>管理者パスワード変更</h3><p><strong>${esc(target.name||'管理者')}</strong><br>${esc(target.email||'')}</p><div class="password-line"><label style="margin:0">新しいパスワード<input id="adminResetPassword" type="password" autocomplete="new-password" placeholder="12文字以上・英大小文字・数字・記号"></label><button type="button" class="secondary" id="generateResetPasswordBtn">自動生成</button></div><label style="margin-top:12px">確認入力<input id="adminResetPasswordConfirm" type="password" autocomplete="new-password" placeholder="もう一度入力"></label><div style="font-size:12px;color:var(--muted);margin-top:7px">変更後は新しいパスワードを本人へ安全な方法で伝えてください。</div><div id="adminResetError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminResetBtn">キャンセル</button><button type="button" class="primary" id="saveAdminResetBtn">パスワードを変更</button></div>`;
     overlay.appendChild(card);document.body.appendChild(overlay);
     const password=card.querySelector('#adminResetPassword');
     const confirmPw=card.querySelector('#adminResetPasswordConfirm');
@@ -131,7 +141,7 @@
     save.onclick=async()=>{
       err.textContent='';
       const pw=password.value,cpw=confirmPw.value;
-      if(pw.length<8){err.textContent='新しいパスワードは8文字以上にしてください。';password.focus();return;}
+      if(!validAdminPassword(pw)){err.textContent=adminPasswordHelp;password.focus();return;}
       if(pw!==cpw){err.textContent='確認用パスワードが一致しません。';confirmPw.focus();return;}
       save.disabled=true;save.textContent='変更中…';
       try{
@@ -155,7 +165,7 @@
     document.getElementById('adminCreateOverlay')?.remove();
     const overlay=document.createElement('div');overlay.id='adminCreateOverlay';overlay.className='admin-create-overlay';
     const card=document.createElement('div');card.className='admin-create-card';
-    card.innerHTML=`<h3>管理者アカウントを追加</h3><p>作成したアカウントはすぐに管理者としてログインできます。一般社員用アカウントは作成しません。</p><label>表示名<input id="newAdminName" autocomplete="name" placeholder="例：西村"></label><label>メールアドレス<input id="newAdminEmail" type="email" autocomplete="email" placeholder="example@company.jp"></label><div class="password-line"><label style="margin:0">初期パスワード<input id="newAdminPassword" type="text" autocomplete="new-password" placeholder="8文字以上"></label><button type="button" class="secondary" id="generateAdminPasswordBtn">自動生成</button></div><div style="font-size:12px;color:var(--muted);margin-top:7px">初回ログイン用のパスワードです。作成後、本人へ安全な方法で伝えてください。</div><div id="adminCreateError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminCreateBtn">キャンセル</button><button type="button" class="primary" id="saveAdminCreateBtn">管理者を作成</button></div>`;
+    card.innerHTML=`<h3>管理者アカウントを追加</h3><p>作成したアカウントはすぐに管理者としてログインできます。一般社員用アカウントは作成しません。</p><label>表示名<input id="newAdminName" autocomplete="name" placeholder="例：西村"></label><label>メールアドレス<input id="newAdminEmail" type="email" autocomplete="email" placeholder="example@company.jp"></label><div class="password-line"><label style="margin:0">初期パスワード<input id="newAdminPassword" type="text" autocomplete="new-password" placeholder="12文字以上・英大小文字・数字・記号"></label><button type="button" class="secondary" id="generateAdminPasswordBtn">自動生成</button></div><div style="font-size:12px;color:var(--muted);margin-top:7px">初回ログイン用のパスワードです。作成後、本人へ安全な方法で伝えてください。</div><div id="adminCreateError" class="admin-create-error"></div><div class="admin-create-actions"><button type="button" class="secondary" id="cancelAdminCreateBtn">キャンセル</button><button type="button" class="primary" id="saveAdminCreateBtn">管理者を作成</button></div>`;
     overlay.appendChild(card);document.body.appendChild(overlay);
     const name=card.querySelector('#newAdminName'),email=card.querySelector('#newAdminEmail'),password=card.querySelector('#newAdminPassword');
     card.querySelector('#generateAdminPasswordBtn').onclick=()=>{password.value=generatePassword();password.focus();password.select();};
@@ -166,7 +176,7 @@
       const n=name.value.trim(),em=email.value.trim().toLowerCase(),pw=password.value;
       if(!n){err.textContent='表示名を入力してください。';name.focus();return;}
       if(!em||!email.checkValidity()){err.textContent='正しいメールアドレスを入力してください。';email.focus();return;}
-      if(pw.length<8){err.textContent='初期パスワードは8文字以上にしてください。';password.focus();return;}
+      if(!validAdminPassword(pw)){err.textContent=adminPasswordHelp;password.focus();return;}
       const save=card.querySelector('#saveAdminCreateBtn');save.disabled=true;save.textContent='作成中…';
       try{
         const c=db();if(!c)throw new Error('Supabaseに接続できません。');
