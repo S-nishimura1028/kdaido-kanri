@@ -500,8 +500,13 @@
           uploaded.push(labelPhotoPath);
         }
         // Old files stay available until all new uploads and DB changes succeed.
-        const r2=await db.from('assets').update({photo_path:photoPath,label_photo_path:labelPhotoPath})
-          .eq('id',assetId).eq('is_deleted',false).select('id').single();
+        const r2=await db.rpc('update_asset_photos_checked',{
+          p_asset_id:assetId,
+          p_photo_path:photoPath,
+          p_label_photo_path:labelPhotoPath,
+          p_expected_photo_path:oldPhoto,
+          p_expected_label_photo_path:oldLabel
+        });
         if(r2.error)throw r2.error;
         photoCommitted=true;
         const oldPaths=[pendingPhotoFile&&oldPhoto,pendingLabelPhotoFile&&oldLabel].filter(Boolean);
