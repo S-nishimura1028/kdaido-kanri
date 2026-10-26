@@ -35,7 +35,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 備品詳細から「現在の使用者」をすぐ変更できる補助機能。
 (function loadCurrentUserEditor(){
   const s=document.createElement('script');
-  s.src='js/current-user.js?v=20261022-ops-2';
+  s.src='js/current-user.js?v=20261026-confirm-handover-1';
   s.defer=true;
   document.head.appendChild(s);
 })();
