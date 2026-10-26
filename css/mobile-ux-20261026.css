@@ -1,0 +1,68 @@
+/* Mobile workflow audit 2026-10-26: presentation only; no backend/data changes. */
+@media(max-width:800px){
+ html,body{max-width:100%;overflow-x:clip}
+ body{padding-bottom:calc(98px + env(safe-area-inset-bottom,0px))!important}
+ .main{min-width:0;padding-bottom:calc(116px + env(safe-area-inset-bottom,0px))!important}
+ .page,.panel,.admin-grid{min-width:0}
+ /* Four visible destinations; older CSS incorrectly forced three columns. */
+ .sidebar nav{grid-template-columns:repeat(4,minmax(0,1fr))!important;bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;left:8px!important;right:8px!important;gap:3px!important;padding:6px!important}
+ .sidebar .nav-btn{min-width:0!important;min-height:58px!important;padding:7px 2px!important;font-size:10.5px!important;line-height:1.3!important;white-space:normal!important;overflow-wrap:anywhere!important;display:flex;align-items:center}
+ .sidebar .nav-btn::before{line-height:1.15!important;flex:0 0 auto}
+ body:has(input:focus) .sidebar nav,body:has(select:focus) .sidebar nav,body:has(textarea:focus) .sidebar nav,body:has(dialog[open]) .sidebar nav{display:none!important}
+ /* Always show all status filters on phones: no hidden horizontal options. */
+ #assetsPage .workspace-status-bar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px!important;overflow:visible!important;margin:0 0 13px!important;padding:0!important}
+ #assetsPage .workspace-status-chip{min-height:46px!important;min-width:0;white-space:normal!important;font-size:12.5px!important;line-height:1.35!important;padding:8px 5px!important;text-align:center;display:flex;align-items:center;justify-content:center;flex-wrap:wrap}
+ #assetsPage .workspace-status-chip .workspace-chip-count{margin-left:4px}
+ #assetsPage .toolbar{gap:10px!important}
+ #assetsPage .toolbar #assetCategory{font-size:16px!important;min-height:48px!important}
+ #assetsPage .toolbar #newAssetBtn{min-height:48px!important;font-size:13px!important;padding:10px 12px!important}
+ #assetsPage .toolbar #assetSearch{min-height:50px!important}
+ #assetsPage .workspace-asset-head p{font-size:12px!important;line-height:1.55}
+ #assetsPage .workspace-asset-head strong{font-size:16px!important;line-height:1.4}
+ #assetsPage .workspace-view-btn{min-height:44px!important;font-size:12.5px!important;padding:9px 10px!important}
+ #assetsPage .workspace-asset-card .workspace-card-identity h3{font-size:17px!important;line-height:1.45}
+ #assetsPage .workspace-card-number{font-size:13px!important}
+ #assetsPage .workspace-card-status{font-size:12px!important;padding:7px 10px!important}
+ #assetsPage .workspace-card-meta dt{font-size:12px;color:#546f77}
+ #assetsPage .workspace-card-meta dd{font-size:13px;line-height:1.55}
+ #assetsPage .workspace-card-actions .workspace-detail,#assetsPage .workspace-card-actions .workspace-edit{min-height:48px!important;font-size:13.5px!important}
+ /* Show every admin tab, rather than hiding most of them off screen. */
+ #workspaceAdminTabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px!important;overflow:visible!important;white-space:normal!important;padding:7px!important;position:static!important}
+ #workspaceAdminTabs .workspace-tab{width:100%!important;min-width:0!important;min-height:48px!important;padding:8px 4px!important;white-space:normal!important;text-align:center;font-size:12.5px!important;line-height:1.4!important}
+ /* Scrollable registration/detail dialogs with stable title and actions. */
+ #assetDialog,#detailDialog{width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important;overscroll-behavior:contain;scroll-padding-top:70px;border-radius:17px!important}
+ #assetDialog .dialog-card,#detailDialog .dialog-card{padding:14px 15px 16px!important}
+ #assetDialog .dialog-head,#detailDialog .dialog-head{position:sticky;top:0;z-index:5;background:#fff;padding:10px 0 12px!important;margin:0 0 14px!important;border-bottom:1px solid #dce9ed;align-items:center}
+ #assetDialog .dialog-head h3,#detailDialog .dialog-head h3{font-size:19px!important;line-height:1.35}
+ #assetDialog .dialog-head .close,#detailDialog .dialog-head .close{min-width:48px!important;min-height:48px!important}
+ #assetForm .form-grid{grid-template-columns:minmax(0,1fr)!important;gap:0!important}
+ #assetForm .form-grid label{font-size:14px!important;line-height:1.6!important;margin-bottom:14px!important;min-width:0}
+ #assetForm input,#assetForm select,#assetForm textarea{min-height:50px!important;min-width:0;font-size:16px!important;line-height:1.45;padding:12px!important}
+ #assetForm input[readonly]{min-height:46px!important;font-size:15px!important}
+ #assetForm #assetStatusHint{font-size:12.5px!important;line-height:1.6!important}
+ #assetForm label small{font-size:12px!important;line-height:1.55!important}
+ #assetForm label:has(#assetPhoto){padding-top:16px;border-top:1px solid #e4edf0;margin-top:7px}
+ #assetForm input[type=file]{padding:9px 10px!important;min-height:62px!important;line-height:1.45;cursor:pointer}
+ #assetForm input[type=file]::file-selector-button{background:#eef7fa;color:#155f82;border:1px solid #bad8e5;border-radius:9px;padding:10px 12px;margin-right:9px;min-height:42px;font-size:14px;font-weight:750}
+ #assetForm .asset-input-guide{font-size:13px!important;line-height:1.6!important;padding:11px 12px!important}
+ #assetForm .asset-input-guide strong{font-size:13px!important}
+ #assetForm #assetFormError:not(:empty){font-size:13px!important;line-height:1.7;scroll-margin-top:64px}
+ #assetForm .dialog-actions{position:sticky!important;bottom:0!important;z-index:6;padding:11px 0 calc(6px + env(safe-area-inset-bottom,0px))!important;margin:14px 0 0!important;border-top:1px solid #dce9ed!important;background:#fff!important;box-shadow:0 -6px 16px rgba(255,255,255,.93)}
+ #assetForm .dialog-actions button{min-height:50px!important;font-size:14px!important;line-height:1.45!important}
+ #detailDialog #workspaceDetailTabs .workspace-tab{min-height:46px!important;font-size:12.5px!important}
+ #detailDialog .dialog-actions button{min-height:48px!important;font-size:13px!important}
+ .qr-quick-shell #qrQuickFields select,.qr-quick-shell #qrQuickNote,.exit-item-form select,.exit-item-form textarea{font-size:16px!important;min-height:48px!important}
+ .qr-quick-action{min-height:78px!important}
+ #workspaceAdminHistory .workspace-history-tools{grid-template-columns:minmax(0,1fr) minmax(112px,35%)!important}
+}
+@media(max-width:370px){
+ .sidebar .nav-btn{font-size:9.5px!important;padding:7px 1px!important}
+ .sidebar .nav-btn::before{font-size:17px!important}
+ #assetsPage .workspace-status-chip{font-size:11.5px!important}
+ #assetsPage .toolbar #newAssetBtn{font-size:12px!important;padding:9px!important}
+ #workspaceAdminTabs .workspace-tab{font-size:11.5px!important}
+}
+@media(max-width:800px) and (orientation:landscape){
+ #assetDialog,#detailDialog{max-height:calc(100dvh - 8px)!important}
+ #assetDialog .dialog-head,#detailDialog .dialog-head{padding:7px 0!important}
+}
