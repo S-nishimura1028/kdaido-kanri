@@ -108,7 +108,7 @@
 
   function validAdminPassword(password){
     return password.length>=12 && /[A-Z]/.test(password) && /[a-z]/.test(password) &&
-      /[0-9]/.test(password) && /[^A-Za-z0-9\\s]/.test(password) && !/\\s/.test(password);
+      /[0-9]/.test(password) && /[^A-Za-z0-9\s]/.test(password) && !/\s/.test(password);
   }
   const adminPasswordHelp='パスワードは12文字以上で、英大文字・英小文字・数字・記号を各1文字以上含めてください。';
   function generatePassword(){
