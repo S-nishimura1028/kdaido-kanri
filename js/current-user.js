@@ -62,7 +62,7 @@
     busy=true;
     try{
       const [assetResult,userResult]=await Promise.all([
-        c.from('assets').select('id,name,assigned_user_id,user_name,status').eq('id',detailId).eq('is_deleted',false).maybeSingle(),
+        c.from('assets').select('id,name,assigned_user_id,user_name,status,updated_at').eq('id',detailId).eq('is_deleted',false).maybeSingle(),
         c.from('asset_users').select('id,name,department,room_number').eq('is_active',true).order('name')
       ]);
       if(assetResult.error)throw assetResult.error;
@@ -112,6 +112,7 @@
         assigned_user_id:user.id,
         user_name:user.name
       }).eq('id',asset.id).eq('status',asset.status).eq('is_deleted',false);
+      if(asset.updated_at)query=query.eq('updated_at',asset.updated_at);
       query=previousId?query.eq('assigned_user_id',previousId):query.is('assigned_user_id',null);
       const {data,error}=await query.select('id').maybeSingle();
       if(error)throw error;
