@@ -87,3 +87,64 @@
    margin-top:7px!important;
  }
 }
+
+/* 2026-10-26: prevent registration sheet drifting sideways on touch scroll.
+   Only its field region may scroll; input controls stay at natural 100% width. */
+@media(max-width:800px){
+ html:has(#assetDialog[open]),body:has(#assetDialog[open]){
+   width:100%;max-width:100%;
+   overflow-x:hidden!important;
+ }
+ #assetDialog{
+   min-width:0!important;
+   box-sizing:border-box!important;
+   overflow-x:hidden!important;
+   overscroll-behavior-x:none;
+   touch-action:pan-y;
+ }
+ #assetForm.dialog-card{
+   min-width:0!important;
+   width:100%!important;
+   max-width:100%!important;
+   overflow-x:hidden!important;
+   overscroll-behavior-x:none;
+ }
+ #assetForm .form-grid{
+   width:100%!important;
+   min-width:0!important;
+   max-width:100%!important;
+   grid-template-columns:minmax(0,1fr)!important;
+   overflow-x:hidden!important;
+   overscroll-behavior-x:none;
+   touch-action:pan-y;
+ }
+ #assetForm .form-grid>label,
+ #assetForm .form-grid>.full-row{
+   min-width:0!important;
+   max-width:100%!important;
+   width:100%;
+   overflow-wrap:anywhere;
+ }
+ #assetForm .form-grid input,
+ #assetForm .form-grid select,
+ #assetForm .form-grid textarea,
+ #assetForm .form-grid img,
+ #assetForm .form-grid small,
+ #assetForm .asset-input-guide{
+   box-sizing:border-box!important;
+   min-width:0!important;
+   max-width:100%!important;
+ }
+ #assetForm .form-grid input[type="file"]{
+   display:block;
+   width:100%!important;
+   max-width:100%!important;
+   overflow:hidden!important;
+   text-overflow:ellipsis;
+ }
+ #assetForm .dialog-head,#assetForm .dialog-actions,
+ #assetForm #assetFormError{
+   min-width:0!important;
+   max-width:100%!important;
+ }
+}
