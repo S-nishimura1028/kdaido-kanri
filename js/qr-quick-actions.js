@@ -177,6 +177,7 @@ async function submit(data){
   if(busy)return;
   setBusy(true);
   const dialog=$('qrQuickDialog');
+  let committed=false;
   try{
     const db=client();
     if(!db)throw new Error('ログインが必要です。');
@@ -193,15 +194,32 @@ async function submit(data){
     });
     if(error)throw error;
     if(!result?.id)throw new Error('更新の結果を確認できません。備品詳細を開き直してください。');
-    dialog.close();
-    await context().refreshAsset(data.asset.id);
+    committed=true; // RPC success means the database change has been committed.
+    if(dialog.open)dialog.close();
+    let refreshFailed=false;
+    try{
+      await context().refreshAsset(data.asset.id);
+    }catch(refreshError){
+      refreshFailed=true;
+      console.warn('QRの保存は完了、画面更新に失敗',refreshError);
+    }
+    const message=(result.asset_no||data.asset.asset_no)+' の'+opNames[data.action]+
+      (refreshFailed?'は保存されています。ただし表示の更新に失敗しました。再実行せず、ページを再読み込みして確認してください。':'を記録しました。履歴にも保存されています。');
     const status=$('qrQuickFeedback')||document.createElement('div');
     status.id='qrQuickFeedback';status.className='qr-quick-feedback';status.setAttribute('role','status');
-    status.textContent=(result.asset_no||data.asset.asset_no)+' の'+opNames[data.action]+'を記録しました。履歴にも保存されています。';
-    const detail=$('assetDetail');if(detail)detail.prepend(status);
+    status.textContent=message;
+    const detail=$('assetDetail');
+    if(detail)detail.prepend(status);
+    // The detail modal may have closed before refresh. Do not imply a failed save.
+    if(refreshFailed&&!$('detailDialog')?.open)window.alert(message);
   }catch(e){
     console.error('QR quick action',e);
-    $('qrQuickSubmitError').textContent=e?.message||'更新できませんでした。通信を確認して備品の状態を再確認してください。';
+    if(committed){
+      // Never invite a second save after the server has confirmed the first.
+      window.alert('操作は保存されています。再実行せず、一覧を再読み込みして確認してください。');
+    }else{
+      $('qrQuickSubmitError').textContent=e?.message||'保存結果を確認できませんでした。いったん備品詳細を開き直し、現在の状態を確認してください。';
+    }
   }finally{setBusy(false)}
 }
 async function enhanceDetail(){
