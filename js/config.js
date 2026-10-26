@@ -8,6 +8,13 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 (function enforceCanonicalProductionUrl(){
   try{
     if (!/^https?:$/.test(location.protocol)) return;
+    // ChatGPT経由で付く参照元パラメータだけをURL表示から削除します。
+    // QR備品表示の ?asset=... や認証用パラメータは変更しません。
+    const current = new URL(location.href);
+    if (current.searchParams.get('utm_source') === 'chatgpt.com') {
+      current.searchParams.delete('utm_source');
+      history.replaceState(history.state, '', current.pathname + current.search + current.hash);
+    }
     const canonical = new URL(window.APP_BASE_URL);
     if (location.hostname === canonical.hostname) return;
     if (!location.hostname.endsWith('.vercel.app')) return;
