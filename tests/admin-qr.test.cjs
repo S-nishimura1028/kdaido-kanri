@@ -118,4 +118,3 @@ test('password login uses Supabase Auth with the entered credentials',async()=>{
   assert.equal(calls.length,2);
   assert.match($('loginError').textContent,/Invalid login credentials/);
 });
-
