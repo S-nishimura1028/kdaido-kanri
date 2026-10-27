@@ -30,7 +30,7 @@
 
 PostgreSQLは `TRUNCATE` と `REFERENCES` をRLSの対象外としている。
 通常のSupabase REST APIに汎用TRUNCATE呼出しはないが、権限が不要なら将来の新規RPC・SQL実行経路に備えて撤去する。
-なお `assets` には匿名向け SELECT/INSERT/UPDATE/DELETE 権限も残る。現在は匿名向けRLSポリシーがないためアクセスは拒否されるが、管理者専用の仕様に合わせて撤去を検討。
+`assets` の匿名向け SELECT/INSERT/UPDATE/DELETE 権限も承認後に削除済み。2026-10-27の再照会で、11業務テーブルのRLS有効、anonのDML権限なし、両ロールのTRUNCATE・REFERENCES・TRIGGER権限なしを確認した。
 
 #### 適用済みSQL（記録用）
 ```sql
@@ -100,3 +100,14 @@ Freeプランでは既存の12文字＋文字種チェック、長い固有パ�
 ## 判定
 **9業務テーブルの不要なGRANTの削除は本番適用済み。** 残る項目は漏えいパスワード保護の警告と、実際の未ログイン・非管理者・管理者による手動受入テスト。
 本書の記載変更はGitHub PRでレビュー待ち。DBでの適用完了とPRマージ完了は別事項。
+
+## 継続受入確認（2026-10-27）
+- 公開クライアントキーのみを用いた匿名HTTP試験: assets / profiles / asset_users / asset_history のSELECTは全件401。データを返さないことを確認。
+- 旧 get_public_asset はダミーUUIDでPOSTして401。DB権限照会でもanon / authenticatedのEXECUTEはfalse。
+- public-photo-updateへ画像なしの空JSONをPOSTし410。業務データを変更するリクエストは行っていない。
+- 既存写真の旧public URLは400で取得不可。Storageの署名URL・認証済み取得は未検証。
+- PR #11 / #12 のPreview URLはVercel認証画面に転送。最終HTTP 200はアプリ表示成功を意味しない。Vercel連携APIも対象team/projectに403、ローカルVercel CLIなしのため、最新配信コミット・PC/スマホ画面操作は未確認。
+- PR #11はローカルで31テスト通過。古い文言・RPC名の期待値と模擬ブラウザーの不足を修正した。製品コードは変更していない。
+- 実際の非管理者・管理者ログイン、登録・編集・貸出・返却・写真更新の成功／拒否は未検証。ユーザーの認証情報、既存セッション、既存ユーザーのJWT偽装を使用していない。
+- 匿名の更新拒否はGRANT/RLSの静的照会で確認した範囲。実データへのDMLは送信していない。
+- PR #10の2ページ実機印刷は指示どおり保留。#11/#12もマージ・本番反映していない。
