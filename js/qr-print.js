@@ -352,6 +352,9 @@
   }
 
   async function writeLabelPrintWindow(w,labels,startPosition,title,layout=LABEL_STOCKS['31373']){
+    // Resolve fonts before baking text into pixels; changing fonts later cannot
+    // repair an already-rasterized label.
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
     const imageCache=new Map();
     const prepared=[];
     for(const item of labels){
@@ -360,33 +363,36 @@
       prepared.push({...item,printImg:imageCache.get(key)});
     }
     const pages=buildPages(prepared,startPosition,layout);
-    const pageHtml=pages.map((slots,pageIndex)=>{
-      const cells=slots.map((x,slotIndex)=>{
-        // 各ページで同じ実寸座標に配置し、改ページ後も位置がずれないようにする。
-        const col=slotIndex%layout.cols;
-        const row=Math.floor(slotIndex/layout.cols);
-        const left=layout.left+col*(layout.width+layout.colGap);
-        const top=layout.top+row*(layout.height+layout.rowGap);
-        const position=`style="left:${Math.round(left*100)/100}mm;top:${Math.round(top*100)/100}mm"`;
-        return x
-        ?`<div class="label" ${position}><img class="print-label-image" src="${x.printImg}" alt="${esc((x.asset_no||'')+' '+x.name)}"></div>`
-        :`<div class="label blank" ${position}></div>`;
+    // Keep each A4 page a single SVG print object. Text and QR are already
+    // combined in each label image, so neither can fragment at a page break.
+    const pageHtml=pages.map(slots=>{
+      const cells=slots.map((item,slot)=>{
+        const col=slot%layout.cols,row=Math.floor(slot/layout.cols);
+        const left=Math.round((layout.left+col*(layout.width+layout.colGap))*100)/100;
+        const top=Math.round((layout.top+row*(layout.height+layout.rowGap))*100)/100;
+        const guide='<rect class="cut-guide" x="'+left+'" y="'+top+'" width="'+layout.width+'" height="'+layout.height+'"/>';
+        if(!item)return '<g class="label blank">'+guide+'</g>';
+        return '<g class="label">'+guide+'<image class="print-label-image" x="'+left+'" y="'+top+'" width="'+layout.width+'" height="'+layout.height+'" href="'+esc(item.printImg)+'" preserveAspectRatio="none"><title>'+esc((item.asset_no||'')+' '+item.name)+'</title></image></g>';
       }).join('');
-      return `<section class="sheet${pageIndex<pages.length-1?' page-break':''}">${cells}</section>`;
+      return '<section class="sheet"><svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="296mm" viewBox="0 0 210 296" aria-label="A4・'+(layout.cols*layout.rows)+'面QRシール">'+cells+'</svg></section>';
     }).join('');
-
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${esc(title||'備品QR エーワン'+layout.code+'印刷')}</title><style>
+    w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title||'備品QR エーワン'+layout.code+'印刷')+'</title><style>'+String.raw`
 @page{size:A4 portrait;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
-.sheet{position:relative;width:210mm;height:296mm;margin:0 auto;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-.label{position:absolute;width:${layout.width}mm;height:${layout.height}mm;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.print-label-image{display:block;width:${layout.width}mm;height:${layout.height}mm;max-width:none;max-height:none;object-fit:fill}
-.blank{visibility:hidden}
-.page-break{break-after:page;page-break-after:always}
-@media screen{body{background:#eef2f6;padding:8mm 0}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:8mm}.label:not(.blank){outline:1px dashed #cbd5e1}}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.label{outline:0}}
-</style></head><body>${pageHtml}<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+.sheet{display:block;position:relative;overflow:hidden;width:210mm;height:296mm;margin:0 auto;break-inside:avoid;page-break-inside:avoid}
+.sheet+.sheet{break-before:page;page-break-before:always}
+.sheet svg{display:block;width:210mm;height:296mm}
+.cut-guide{fill:none;stroke:transparent;stroke-width:.15}
+.print-toolbar{display:none}
+@media screen{body{background:#e9eff2;padding:9mm 0}.print-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px 18px;background:#fff;border:1px solid #d7e2e8;border-radius:12px;padding:14px 18px;margin:0 auto 8mm;width:min(860px,95%);font-size:13px;color:#25465b}.print-toolbar span{flex-basis:100%;text-align:center}.print-toolbar button{background:#075b9b;color:#fff;border:0;border-radius:9px;padding:10px 19px;font-weight:bold;cursor:pointer}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15);margin-bottom:9mm}.cut-guide{stroke:#d0dce2}}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.cut-guide{stroke:none!important}.print-toolbar{display:none!important}}
+</style></head><body>`+'<div class="print-toolbar"><strong>QRシール '+labels.length+'件・'+pages.length+'ページ / '+esc(layout.code)+'</strong><button type="button" onclick="window.print()">印刷</button><span>A4縦／倍率100%／余白なし／ヘッダー・フッターなし。ラベル用紙の前に普通紙で位置確認してください。</span></div>'+pageHtml+String.raw`<script>
+window.addEventListener('load',async function(){
+  try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(_e){}
+  setTimeout(function(){window.print()},400);
+});
+</script></body></html>`);
     w.document.close();
   }
 

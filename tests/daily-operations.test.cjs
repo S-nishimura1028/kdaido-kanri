@@ -23,7 +23,7 @@ test('mobile has a logout control wired to Supabase Auth',()=>{
 test('hidden management number retains existing value on edit',()=>{
   const script=file('js/asset-no-remove.js'),app=file('js/app.js');
   assert.doesNotMatch(script,/input\.value\s*=\s*''/);
-  assert.match(app,/asset_no:\$\('assetNo'\)\.value\.trim\(\)\|\|null/);
+  assert.ok(app.includes("asset_no:id?($('assetNo').value.trim()||null):null"));
 });
 
 test('all-history pagination and soft-deleted filtering are present',()=>{
@@ -51,7 +51,7 @@ test('search supports user masters and location with filtered active rows',async
     async range(start,end){seen.pages.push([start,end]);return{data:records,error:null};}
   };
   const sandbox={
-    $,assets:[],assetUsers:[{id:'u1',name:'山本さん'}],
+    $,window:{},assets:[],assetUsers:[{id:'u1',name:'山本さん'}],
     db:{from(t){assert.equal(t,'assets');return q;}},
     renderAssetsTable(rows){seen.table=rows;},
     openAssetFromUrlOnce(){},console
@@ -89,14 +89,14 @@ test('quick user change updates master ID and name in one atomic asset update',a
         async maybeSingle(){return{data:asset,error:null}},
         update(payload){
           saved.push(payload);
-          return {eq(){return this},select(){return this},async single(){return{data:{id:assetId},error:null}}};
+          return {eq(){return this},select(){return this},async maybeSingle(){return{data:{id:assetId},error:null}}};
         }
       };
       throw new Error(table);
     }
   };
   const context={
-    currentAssetId:assetId,busy:false,
+    currentAssetId:assetId,busy:false,window:{confirm:()=>true},
     db:()=>dbClient,pickUser:async()=>({id:'u2'}),
     location:{reload(){reloads++;}},document:{getElementById(){return{dataset:{assetId}}}},
     alert(){throw new Error('unexpected error alert');},console
@@ -104,17 +104,17 @@ test('quick user change updates master ID and name in one atomic asset update',a
   const run=vm.runInNewContext(src.slice(start,end)+';editCurrentUser',context);
   await run();
   assert.deepEqual(JSON.parse(JSON.stringify(saved)),[
-    {assigned_user_id:'u2',user_name:'新使用者',status:'使用中'}
+    {assigned_user_id:'u2',user_name:'新使用者'}
   ]);
   assert.equal(reloads,1);
 });
 
 test('photo replacement never removes old photos before database update',()=>{
   const app=file('js/app.js'),quick=file('js/photo-update.js');
-  const appUpdate=app.indexOf("update({photo_path:photoPath,label_photo_path:labelPhotoPath})");
+  const appUpdate=app.indexOf("rpc('update_asset_photos_checked'");
   const appDelete=app.indexOf("remove(oldPaths)");
   assert.ok(appUpdate>0&&appDelete>appUpdate);
-  const quickRpc=quick.indexOf("rpc('update_asset_photos'");
+  const quickRpc=quick.indexOf("rpc('update_asset_photos_checked'");
   const quickCleanup=quick.indexOf("remove(obsolete)");
   assert.ok(quickRpc>0&&quickCleanup>quickRpc);
   assert.match(quick,/const referenced=new Set/);
