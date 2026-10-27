@@ -52,3 +52,39 @@ test('disposal needs a fresh reason, and cannot silently reuse old notes',()=>{
   assert.match(source,/updateDisposalReasonField\(\)/);
   assert.match(source,/assetDisposalReason/);
 });
+
+test('cancel and close buttons do not submit the form',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+  assert.match(html,/<button type="button" id="assetFormCloseBtn"/);
+  assert.match(html,/<button type="button" id="assetFormCancelBtn"/);
+  assert.match(html,/<button type="submit" id="saveAssetBtn"/);
+});
+test('closing is blocked while asset save is active, including Escape',()=>{
+  const first=source.indexOf('  let assetFormSaving=false;');
+  const last=source.indexOf("  $('assetForm').addEventListener('submit',async e=>{",first);
+  assert.ok(first>=0&&last>first);
+  const callbacks={};let closes=0;
+  const elements={
+    assetDialog:{close(){closes++;},addEventListener(type,fn){callbacks['dialog:'+type]=fn;}},
+    assetFormCloseBtn:{addEventListener(type,fn){callbacks['x:'+type]=fn;}},
+    assetFormCancelBtn:{addEventListener(type,fn){callbacks['cancel:'+type]=fn;}}
+  };
+  const {setSaving}=new Function('$',source.slice(first,last)+
+    'return {setSaving:value=>assetFormSaving=value};')(id=>elements[id]);
+  callbacks['cancel:click']();
+  assert.equal(closes,1);
+  setSaving(true);
+  callbacks['cancel:click']();
+  callbacks['x:click']();
+  assert.equal(closes,1);
+  let prevented=false;
+  callbacks['dialog:cancel']({preventDefault(){prevented=true;}});
+  assert.equal(prevented,true);
+  setSaving(false);
+  callbacks['x:click']();
+  assert.equal(closes,2);
+});
+test('disposal history displays its reason from JSON projection',()=>{
+  assert.match(source,/disposal_note:after_data->>note/);
+  assert.match(source,/廃棄理由：/);
+});
