@@ -38,16 +38,19 @@ QRは備品IDへのショートカットであり、公開権限を与えない�
 現在の管理者限定RLS変更は:
 supabase/migrations/20261010_admin_qr_only.sql
 
-## 旧Public RPC（停止対象）
-public.get_public_asset(uuid) の匿名実行権限を剥奪する。
-SECURITY DEFINERの公開経路を残さない。
-レビュードキュメントと検証用SQL: docs/admin-only-qr-release-plan.md。
+## 旧Public RPC
+public.get_public_asset(uuid) は関数の定義は残るが、2026-10-27時点で
+anon / authenticated 両ロールの EXECUTE 権限が無いことを確認済み。
+SECURITY DEFINERのため、将来も公開実行権限を戻さない。
+切替手順・検証SQLは docs/admin-only-qr-release-plan.md。
 
 ## 写真
 Storage bucket:
 asset-photos
 
-旧 public-photo-update Edge Function を停止し、匿名アップロードを受け付けない。
+旧 public-photo-update Edge Function は2026-10-27時点で ACTIVE / verify_jwt=false だが、
+現行の処理は旧エンドポイントの呼び出しに HTTP 410 を返す廃止通知のみ。
+画像アップロード・DB更新処理は一切含まれていない。管理者用では使用しない。
 Storage asset-photos バケットは非公開へ変更し、管理者用署名URLを利用する。
 Storage RLS の private.is_admin() による管理者制限を保持する。
 
@@ -72,3 +75,10 @@ Storage RLS の private.is_admin() による管理者制限を保持する。
 - 一括更新
 
 本番DB変更前に、影響対象・ロールバック方法・確認SQLを用意する。
+
+## 点検記録（2026-10-27）
+- 本番のRLS・権限・Edge Functionsの設定を読み取りで照合。
+- 一部の public 業務テーブルに、anon / authenticated への TRUNCATE・REFERENCES・TRIGGER 権限が残っている。RLSではTRUNCATEを制限できないため、最小権限化を提案。
+- Supabase Security Advisor の「Leaked Password Protection Disabled」は未対応。Pro以上で利用可能。
+- 本番DB・認証設定は点検時点では変更していない。修正SQLはレビュー後に限り適用する。
+- 詳細・検証手順・SQL案: docs/security-audit-20261027.md。
