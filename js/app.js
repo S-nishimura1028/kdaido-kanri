@@ -445,6 +445,16 @@
     }catch(_e){return false;}
   }
   let assetFormSaving=false;
+  // Cancel/close must never submit the form. Ignore close actions while a
+  // network save is in progress, including the native Escape-key event.
+  function closeAssetFormSafely(){
+    if(!assetFormSaving)$('assetDialog').close();
+  }
+  $('assetFormCloseBtn').addEventListener('click',closeAssetFormSafely);
+  $('assetFormCancelBtn').addEventListener('click',closeAssetFormSafely);
+  $('assetDialog').addEventListener('cancel',e=>{
+    if(assetFormSaving)e.preventDefault();
+  });
   $('assetForm').addEventListener('submit',async e=>{
     e.preventDefault();
     if(assetFormSaving)return;
