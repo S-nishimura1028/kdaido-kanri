@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '../js/qr-print.js'), 'utf8');
-const start = source.indexOf('  function buildPages(');
+const start = source.indexOf('  const LABEL_STOCKS=');
 const end = source.indexOf('\n  async function loadSelectedAssetInfo(', start);
 assert.ok(start >= 0 && end > start, 'QR pagination helpers should exist');
 const mockCanvasContext = () => ({
@@ -28,11 +28,11 @@ class FakeImage {
 }
 const helpers = vm.runInNewContext(
   '(function(){ const esc = value => String(value); ' + source.slice(start, end) +
-  '; return {buildPages,writeLabelPrintWindow}; })()',
+  '; return {LABEL_STOCKS,buildPages,writeLabelPrintWindow}; })()',
   {document:mockDocument,Image:FakeImage}
 );
 
-async function render(count, startPosition) {
+async function render(count, startPosition, paper='31373') {
   const labels = Array.from({length: count}, (_, index) => ({
     name: '備品 ' + (index + 1),
     asset_no: 'KD-' + String(index + 1).padStart(4, '0'),
@@ -41,7 +41,7 @@ async function render(count, startPosition) {
   let html = '';
   await helpers.writeLabelPrintWindow({
     document: { write(value) { html = value; }, close() {} }
-  }, labels, startPosition, 'テスト印刷');
+  }, labels, startPosition, 'テスト印刷',helpers.LABEL_STOCKS[paper]);
   const sheets = html.split(/<section class="sheet(?: page-break)?"?>/).slice(1)
     .map(s => s.split('</section>')[0]);
   return {html, sheets};
@@ -91,4 +91,45 @@ test('QR and all text are combined into one image per printed label', async () =
   assert.doesNotMatch(html,/\.label-inner\{[^}]*rotate/);
   assert.match(sheets[0],/src="data:image\/png;base64,LABEL"/);
   assert.match(sheets[1],/src="data:image\/png;base64,LABEL"/);
+});
+
+
+test('31071 layout has exactly 24 positions at the vendor coordinates', async () => {
+  const {html,sheets}=await render(25,1,'31071');
+  assert.equal(sheets.length,2);
+  assert.equal((sheets[0].match(/<div class="label(?: blank)?"/g)||[]).length,24);
+  assert.equal((sheets[1].match(/<div class="label(?: blank)?"/g)||[]).length,24);
+  assert.match(sheets[0],/left:6.46mm;top:13.06mm/);
+  assert.match(sheets[0],/left:73mm;top:13.06mm/);
+  assert.match(sheets[0],/left:139.54mm;top:13.06mm/);
+  assert.match(sheets[0],/left:6.46mm;top:46.92mm/);
+  assert.match(sheets[0],/left:139.54mm;top:250.08mm/);
+  assert.match(sheets[1],/KD-0025/);
+  assert.match(sheets[1],/class="label" style="left:6.46mm;top:13.06mm"/);
+  assert.match(html,/\.label\{position:absolute;width:64mm;height:33.86mm/);
+});
+
+test('31071 starts at slot 24 and moves next printed label to sheet two',async()=>{
+  const {sheets}=await render(2,24,'31071');
+  assert.equal(sheets.length,2);
+  assert.equal((sheets[0].match(/class="label blank"/g)||[]).length,23);
+  assert.match(sheets[0],/KD-0001/);
+  assert.doesNotMatch(sheets[0],/KD-0002/);
+  assert.match(sheets[1],/KD-0002/);
+});
+
+test('31373 is the standard sheet and uses 27 positions at the existing layout',async()=>{
+  const {html,sheets}=await render(27,1);
+  assert.equal(sheets.length,1);
+  assert.match(sheets[0],/left:7mm;top:9mm/);
+  assert.match(sheets[0],/left:141mm;top:257mm/);
+  assert.match(html,/\.print-label-image\{display:block;width:62mm;height:31mm/);
+});
+
+test('both formats keep printed QR label as a single raster image',async()=>{
+  for(const stock of ['31373','31071']){
+    const {sheets}=await render(2,1,stock);
+    assert.equal((sheets[0].match(/class="print-label-image"/g)||[]).length,2);
+    assert.doesNotMatch(sheets[0],/class="label-inner"/);
+  }
 });
