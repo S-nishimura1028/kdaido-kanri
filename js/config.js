@@ -51,7 +51,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 管理者アカウント追加を「メールアドレス＋初期パスワード」だけに統一。
 (function loadSimpleAdminAccountCreator(){
   const s=document.createElement('script');
-  s.src='js/admin-account-simple.js?v=20261027-strong-password-1';
+  s.src='js/admin-account-simple.js?v=20261027-shared-auth-1';
   s.defer=true;
   document.head.appendChild(s);
 })();
@@ -83,7 +83,7 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
 // 備品詳細からテスト備品などを削除。DB上は履歴を残すソフト削除。
 (function loadAssetDelete(){
   const s=document.createElement('script');
-  s.src='js/asset-delete.js?v=20261022-ops-2';
+  s.src='js/asset-delete.js?v=20261027-shared-auth-1';
   s.defer=true;
   document.head.appendChild(s);
 })();

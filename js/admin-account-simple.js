@@ -1,12 +1,9 @@
 (function(){
   'use strict';
 
-  let client=null;
+
   function db(){
-    if(client)return client;
-    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
-    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-    return client;
+    return window.DaidoQrBridge?.getClient?.()||null;
   }
 
   function errorMessage(value,fallback='管理者を作成できませんでした。'){

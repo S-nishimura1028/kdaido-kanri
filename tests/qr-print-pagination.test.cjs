@@ -27,7 +27,7 @@ class FakeImage {
   set src(value){this.value=value; if(this.onload)this.onload();}
 }
 const helpers = vm.runInNewContext(
-  '(function(){ '+source.slice(source.indexOf('  function esc('),source.indexOf('  let client=null;'))+source.slice(start, end) +
+  '(function(){ '+source.slice(source.indexOf('  function esc('),source.indexOf('  let activeAssetId='))+source.slice(start, end) +
   '; return {LABEL_STOCKS,buildPages,writeLabelPrintWindow}; })()',
   {document:mockDocument,Image:FakeImage}
 );
