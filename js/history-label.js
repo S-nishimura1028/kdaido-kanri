@@ -1,16 +1,14 @@
 (function(){
   'use strict';
 
-  let client=null;
   let running=false;
   let observer=null;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 
   function db(){
-    if(client)return client;
-    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
-    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-    return client;
+    // app.js owns session refresh and sign-out. If it is not ready, the
+    // existing observer/timers retry without creating a competing session.
+    return window.DaidoQrBridge?.getClient?.()||null;
   }
 
   function assetUser(h){

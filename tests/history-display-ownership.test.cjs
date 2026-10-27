@@ -6,9 +6,10 @@ const vm=require('node:vm');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../js/history-label.js'),'utf8');
 
-async function run(nativeRows){
+async function run(nativeRows,shared=true){
   let html='<table>native history with asset identity and disposal reason</table>';
   let clients=0;
+  let reads=0;
   const callbacks=[];
   const host={
     querySelector(selector){
@@ -18,18 +19,18 @@ async function run(nativeRows){
     },
     get innerHTML(){return html},set innerHTML(value){html=value}
   };
-  const client={from(){return {
+  const client={from(){reads++;return {
     select(){return this},order(){return this},
     async range(){return {data:[],error:null}},
     then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)}
   }}};
   vm.runInNewContext(source,{
-    window:{supabase:{createClient(){clients++;return client}},SUPABASE_URL:'fixture',SUPABASE_PUBLISHABLE_KEY:'fixture'},
+    window:{DaidoQrBridge:shared?{getClient:()=>client}:undefined,supabase:{createClient(){clients++;return client}},SUPABASE_URL:'fixture',SUPABASE_PUBLISHABLE_KEY:'fixture'},
     document:{readyState:'complete',getElementById(){return host}},
     MutationObserver:class{observe(){}},setTimeout(fn){callbacks.push(fn)},console
   });
   for(const fn of callbacks)await fn();
-  return {html,clients};
+  return {html,clients,reads};
 }
 
 test('legacy history enhancer preserves native row identity, action and disposal details',async()=>{
@@ -40,8 +41,16 @@ test('legacy history enhancer preserves native row identity, action and disposal
 
 test('legacy history tables without native asset metadata still use the fallback renderer',async()=>{
   const result=await run(false);
-  assert.equal(result.clients,1);
+  assert.equal(result.clients,0,'fallback rendering must reuse the main authenticated client');
+  assert.ok(result.reads>0);
   assert.match(result.html,/履歴はありません/);
+});
+
+test('history enhancer waits for the shared client instead of creating another auth session',async()=>{
+  const result=await run(false,false);
+  assert.equal(result.clients,0);
+  assert.equal(result.reads,0);
+  assert.equal(result.html,'<table>native history with asset identity and disposal reason</table>');
 });
 
 test('history asset link navigates to assets and resets unrelated filters',()=>{
@@ -66,4 +75,3 @@ test('history asset link navigates to assets and resets unrelated filters',()=>{
   handler({target:{closest(){return null}}});
   assert.equal(navigations,1);
 });
-
