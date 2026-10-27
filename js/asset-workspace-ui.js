@@ -286,7 +286,7 @@ function initAdmin(){
   var b=ev.target.closest('[data-asset-search]');if(!b)return;
   window.DaidoAnalysisFilter=null;
   $('assetSearch').value=b.dataset.assetSearch;$('assetStatus').value='';$('assetCategory').value='';
-  $('.nav-btn[data-page="assets"]')?.click();
+  document.querySelector('.nav-btn[data-page="assets"]')?.click();
   $('assetSearch').dispatchEvent(new Event('input',{bubbles:true}));
  });
  new MutationObserver(applyAdminPanels).observe(grid,{childList:true});
