@@ -78,7 +78,7 @@ Storage RLS の private.is_admin() による管理者制限を保持する。
 
 ## 点検記録（2026-10-27）
 - 本番のRLS・権限・Edge Functionsの設定を読み取りで照合。
-- 一部の public 業務テーブルに、anon / authenticated への TRUNCATE・REFERENCES・TRIGGER 権限が残っている。RLSではTRUNCATEを制限できないため、最小権限化を提案。
+- **承認後の本番変更により修正済み。** 9つのpublic業務テーブルから、anon / authenticated への TRUNCATE・REFERENCES・TRIGGER 権限を削除。public.assetsからanonへのSELECT/INSERT/UPDATE/DELETE権限も削除。変更後にRLSと管理者向けSELECT/INSERT/UPDATE権限維持を再検証した。
 - Supabase Security Advisor の「Leaked Password Protection Disabled」は未対応。Pro以上で利用可能。
-- 本番DB・認証設定は点検時点では変更していない。修正SQLはレビュー後に限り適用する。
+- 本番DBでは上述の権限削除のみ2026-10-27に適用済み。Auth、Storage、Edge Functions、備品データは変更していない。
 - 詳細・検証手順・SQL案: docs/security-audit-20261027.md。
