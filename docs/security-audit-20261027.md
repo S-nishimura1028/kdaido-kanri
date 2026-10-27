@@ -1,6 +1,6 @@
 # Supabase セキュリティ点検・権限見直し提案（2026-10-27）
 
-> **レビュー用。本文中のSQLは本番に未適用。** この文書の作成・更新で、本番のDB・Auth・Storage・Edge Functionは変更しない。
+> **本番適用記録：2026-10-27。** 利用者の承認後、不要なテーブル権限の縮小を本番Supabaseに適用済み。SQL実行対象は9つの業務テーブルの `anon` / `authenticated` ロール、および `public.assets` の `anon` へのDML権限のみ。備品・写真・ユーザーの実データは編集していない。
 
 ## 対象
 - 熊本大同青果 備品管理システム
@@ -21,10 +21,10 @@
 - 現在の有効管理者profileは12件。10件が過去30日に作成。承認されているアカウントか社内で棚卸し推奨。
 - Security Advisor警告は `auth_leaked_password_protection` の1件。
 
-## 要対応（本番未変更）
+## 権限変更の実施結果と残る対応
 
 ### 1. RLSでは制御できない不要なテーブル権限
-下記9つの実テーブルに対して、`anon` と `authenticated` の両ロールに `TRUNCATE`, `REFERENCES`, `TRIGGER` 権限が付与されたまま。
+変更前は下記9つの実テーブルに対して、`anon` と `authenticated` の両ロールに `TRUNCATE`, `REFERENCES`, `TRIGGER` 権限が付与されていた。**これらは承認後の変更で削除済み。**
 
 `assets`, `asset_history`, `asset_users`, `categories`, `departments`, `inventory_checks`, `loans`, `locations`, `profiles`。
 
@@ -32,14 +32,16 @@ PostgreSQLは `TRUNCATE` と `REFERENCES` をRLSの対象外としている。
 通常のSupabase REST APIに汎用TRUNCATE呼出しはないが、権限が不要なら将来の新規RPC・SQL実行経路に備えて撤去する。
 なお `assets` には匿名向け SELECT/INSERT/UPDATE/DELETE 権限も残る。現在は匿名向けRLSポリシーがないためアクセスは拒否されるが、管理者専用の仕様に合わせて撤去を検討。
 
-#### 人間がレビューするSQL案（未実行）
+#### 適用済みSQL（記録用）
 ```sql
--- ⚠ 承認、既存GRANTのスナップショット保存、バックアップ確認後に限り実行
+-- 2026-10-27に承認を受けて本番適用済み。記録用であり、再実行は不要
 begin;
 
 -- ログイン有無にかかわらず不要な非行単位の権限を撤去
 revoke truncate, references, trigger
-on all tables in schema public
+on table public.assets, public.asset_history, public.asset_users,
+         public.categories, public.departments, public.inventory_checks,
+         public.loans, public.locations, public.profiles
 from anon, authenticated;
 
 -- 業務用のassetsに匿名アクセスを許可しない（RLSに加えてGRANTも最小化）
@@ -53,9 +55,9 @@ commit;
 - TRIGGER権限を剥奪しても、既存のトリガーが発火しなくなるわけではない。
 - トランザクション全体を中断すれば未コミットの操作はロールバック可能。適用後に問題が判明した場合は、事前保存したGRANT情報から**必要な特定ロール・特定テーブル・特定操作のみ**戻す。危険な権限の一括再付与は避ける。
 - 影響評価対象: 管理者ログイン、備品一覧、登録、通常編集、貸出、返却、引継ぎ、廃棄、写真更新、履歴、管理者追加。実機のQRからの表示も確認。
-- 承認前に変更しないこと。
+- 上記対象権限の変更は2026-10-27に承認・適用済み。追加変更は別途レビューすること。
 
-#### 事前・事後検証SQL（読み取り）
+#### 適用前後の検証結果と再検証SQL（読み取り）
 ```sql
 select c.relname as table_name, c.relrowsecurity as rls_enabled,
   has_table_privilege('anon', c.oid, 'TRUNCATE') as anon_truncate,
@@ -66,8 +68,12 @@ join pg_namespace n on n.oid=c.relnamespace
 where n.nspname='public' and c.relkind in ('r','p')
 order by c.relname;
 ```
-期待: 適用後に業務テーブルの両ロール `*_truncate = false`、`assets` の `anon_select=false`、RLSは以前と同じ有効状態。
-さらにサービス側で匿名・非管理者・管理者の各ログイン／API呼び出しを検証する。
+検証済み：適用後の業務テーブルの両ロール `TRUNCATE` / `REFERENCES` / `TRIGGER` はすべて `false`、`assets` の `anon` SELECT/INSERT/UPDATE/DELETEはすべて `false`、RLSは以前と同じ有効状態。
+`authenticated` のSELECT/INSERT/UPDATE権限と、QR・引継ぎ・写真更新のRPC権限は維持。
+
+適用直前と直後のデータ件数は一致：assets 171件、asset_users 38件、asset_history 651件、profiles 12件、storage.objects（asset-photos）88件。
+なお件数一致はデータ全内容が不変であることの完全な証明ではない。
+サービス側で匿名・非管理者・管理者の各ログイン／API呼び出しの受入テストは引き続き必要。
 
 ### 2. 漏えいパスワード保護
 Security Advisor: `Leaked Password Protection Disabled`。
@@ -92,5 +98,5 @@ Freeプランで利用不可なら既存の12文字＋文字種チェック、�
 - [Supabase leaked password protection](https://supabase.com/docs/guides/auth/password-security)
 
 ## 判定
-**アクセス制御の重要な経路は基本的に管理者限定だが、不要なGRANTとパスワード保護の設定が残るため「完全クローズ」とはしない。**
-このレビュー用提案はGitHub PRで保留し、本番でのSQL適用には人間の明示承認と受入テストが必要。
+**9業務テーブルの不要なGRANTの削除は本番適用済み。** 残る項目は漏えいパスワード保護の警告と、実際の未ログイン・非管理者・管理者による手動受入テスト。
+本書の記載変更はGitHub PRでレビュー待ち。DBでの適用完了とPRマージ完了は別事項。
