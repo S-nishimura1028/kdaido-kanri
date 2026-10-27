@@ -42,7 +42,7 @@
     btn.id='qrPrintBtn';
     btn.className='primary';
     btn.textContent='この備品のQRシールを印刷';
-    btn.title='A4・27面のラベル用紙に印刷します';
+    btn.title='エーワン31373（27面）または31071（24面）で印刷します';
     btn.style.minHeight='46px';
     btn.addEventListener('click',async function(){
       const err=document.getElementById('qrError');
@@ -53,25 +53,26 @@
       const fallbackNo=parts.length>1?parts[0]:'';
       const info=await fetchAssetPrintInfo(activeAssetId,fallbackName,fallbackNo);
       const img=canvas.toDataURL('image/png');
-      printSingle(info.name,info.asset_no,info.location,img,err);
+      await printSingle(info.name,info.asset_no,info.location,img,err);
     });
 
     const hint=document.createElement('div');
     hint.style.cssText='width:100%;font-size:11px;color:#64748b;margin-top:2px';
-    hint.textContent='複数枚の印刷は備品一覧で対象を選び「QRシールを一括印刷」を押してください。対応用紙：LBLA4-WPG-27（A4・27面）。';
+    hint.textContent='印刷時に用紙を選択：標準はエーワン31373（A4・27面）、屋外用は31071（A4・24面）。複数枚は備品一覧から一括印刷できます。';
 
     wrap.appendChild(btn);
     wrap.appendChild(hint);
     area.insertBefore(wrap,document.getElementById('qrError'));
   }
 
-  function printSingle(name,assetNo,location,img,err){
-    const startPosition=chooseStartPosition();
-    if(startPosition===null)return;
+  async function printSingle(name,assetNo,location,img,err){
+    const settings=choosePrintSettings();
+    if(!settings)return;
     const w=window.open('','_blank');
     if(!w){ if(err) err.textContent='印刷画面を開けませんでした。ポップアップを許可してください。'; return; }
     const labels=[{name:name||'備品',asset_no:assetNo||null,location:location||null,img}];
-    writeLabelPrintWindow(w,labels,startPosition,`${name||'備品'} QR印刷`);
+    try{await writeLabelPrintWindow(w,labels,settings.startPosition,`${name||'備品'} QR印刷（${settings.layout.code}）`,settings.layout);}
+    catch(e){if(err)err.textContent=e.message||'印刷データを作成できませんでした。';w.close();}
   }
 
   function headerIndex(table,label){
@@ -178,7 +179,7 @@
     // Only mutate the DOM when values actually change. The document-wide
     // MutationObserver must not trigger another animation-frame render loop.
     const label=n?`QRシールを一括印刷（${n}件）`:'QRシールを一括印刷';
-    const hint=n?`選択中の${n}件をA4・27面のシール用紙に印刷します`:'印刷したい備品にチェックを入れてください';
+    const hint=n?`選択中の${n}件をA4ラベル（31373：27面／31071：24面）から選んで印刷します`:'印刷したい備品にチェックを入れてください';
     if(btn.textContent!==label)btn.textContent=label;
     if(btn.disabled!==(n===0))btn.disabled=n===0;
     if(btn.title!==hint)btn.title=hint;
@@ -192,69 +193,190 @@
     }
   }
 
-  function chooseStartPosition(){
-    const raw=window.prompt('印刷を開始するシール位置を1〜27で入力してください。\nLBLA4-WPG-27は左上が1、右へ2・3、次の段が4〜6です。','1');
+  // 販売元のフォーマットを実寸で定義（左上起点・列方向の順番）。
+  // 31071：左右6.46mm・列間2.54mm・上下13.06mm、行間0。
+  const LABEL_STOCKS=Object.freeze({
+    '31373':Object.freeze({
+      code:'31373',title:'エーワン31373（水に強い・屋内用）',
+      width:62,height:31,cols:3,rows:9,left:7,top:9,colGap:5,rowGap:0
+    }),
+    '31071':Object.freeze({
+      code:'31071',title:'エーワン31071（屋外用フィルム）',
+      width:64,height:33.86,cols:3,rows:8,left:6.46,top:13.06,colGap:2.54,rowGap:0
+    })
+  });
+
+  function choosePrintSettings(){
+    const raw=window.prompt(
+      'QRシール用紙を選択してください。\n1：31373（水に強い・27面／標準）\n2：31071（屋外フィルム・24面）',
+      '1'
+    );
+    if(raw===null)return null;
+    const layout=raw.trim()==='1'||raw.trim()==='31373'
+      ?LABEL_STOCKS['31373']
+      :raw.trim()==='2'||raw.trim()==='31071'
+        ?LABEL_STOCKS['31071']:null;
+    if(!layout){window.alert('用紙は1（31373）または2（31071）を選択してください。');return null;}
+    const startPosition=chooseStartPosition(layout);
+    return startPosition===null?null:{layout,startPosition};
+  }
+
+  function chooseStartPosition(layout=LABEL_STOCKS['31373']){
+    const slots=layout.cols*layout.rows;
+    const raw=window.prompt(
+      '印刷を開始するシール位置を1〜'+slots+'で入力してください。\n'
+      +layout.title+'（'+layout.cols+'列×'+layout.rows+'段）\n'
+      +'左上が1、右へ2・3、次の段が4〜6です。\n'
+      +'新品のシール用紙は「1」を指定してください。使用済みシートの再給紙は紙詰まりのおそれがあります。',
+      '1'
+    );
     if(raw===null)return null;
     const n=Number(raw);
-    if(!Number.isInteger(n)||n<1||n>27){alert('開始位置は1〜27で入力してください。');return null;}
+    if(!Number.isInteger(n)||n<1||n>slots){
+      window.alert('開始位置は1〜'+slots+'で入力してください。');
+      return null;
+    }
     return n;
   }
 
-  function buildPages(labels,startPosition){
+  function buildPages(labels,startPosition,layout=LABEL_STOCKS['31373']){
+    const capacity=layout.cols*layout.rows;
     const pages=[];
     let index=0;
     let first=true;
     while(index<labels.length){
-      const slots=new Array(27).fill(null);
+      const slots=new Array(capacity).fill(null);
       let pos=first?startPosition-1:0;
-      while(pos<27&&index<labels.length){slots[pos++]=labels[index++];}
+      while(pos<capacity&&index<labels.length)slots[pos++]=labels[index++];
       pages.push(slots);
       first=false;
     }
     return pages;
   }
 
+  // ブラウザの改ページ処理が回転済みHTMLを分割するため、
+  // QRと文字をシール1枚ごとに画像化してから印刷する。
+  const LABEL_PX_PER_MM=12;
+  const labelMm=mm=>mm*LABEL_PX_PER_MM;
+  const labelFont=pt=>Math.round(pt*(25.4/72)*LABEL_PX_PER_MM*10)/10;
 
-  // A whole-page SVG is a single print object. Chromium's paged layout can
-  // misplace/clamp the ninth row of a 27-cell CSS grid whenever page 2 exists.
-  // Use fixed millimetre coordinates inside each SVG to keep every sheet
-  // identical (including partial first pages / reused label stock).
-  function splitLabelName(value){
-    const chars=Array.from(String(value||'備品').replace(/[\r\n]+/g,' ').trim());
-    if(chars.length<=11)return [chars.join('')];
-    const first=chars.slice(0,11).join('');
-    const rest=chars.slice(11);
-    return [first,rest.length>11?rest.slice(0,10).join('')+'…':rest.join('')];
+  function labelText(ctx,text,x,y,fontPt,maxWidth,color='#111'){
+    const value=String(text||'');
+    let size=labelFont(fontPt);
+    ctx.fillStyle=color;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    while(size>labelFont(5.1)){
+      ctx.font='800 '+size+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+      if(ctx.measureText(value).width<=maxWidth)break;
+      size-=0.8;
+    }
+    ctx.font='800 '+size+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+    ctx.fillText(value,x,y,maxWidth);
   }
 
-  function writeLabelPrintWindow(w,labels,startPosition,title){
-    const pages=buildPages(labels,startPosition);
-    const pageHtml=pages.map((slots)=>{
-      const labelsSvg=slots.map((asset,slotIndex)=>{
-        const col=slotIndex%3,row=Math.floor(slotIndex/3);
-        const left=7+col*67,top=9+row*31;
-        const guide=`<rect class="cut-guide" x="${left}" y="${top}" width="62" height="31"/>`;
-        if(!asset)return guide;
-        const cx=left+31,cy=top+15.5;
-        const names=splitLabelName(asset.name);
-        const nameText=names.map((line,index)=>
-          `<text x="0" y="${names.length===1?19:17.4+index*3.5}" text-anchor="middle" dominant-baseline="central" font-size="${names.length===1?2.7:2.45}" font-weight="800">${esc(line)}</text>`
-        ).join('');
-        // Portrait artwork is rotated within the 62 x 31 mm landscape
-        // label, preserving the orientation of already-printed sheets.
-        return guide+`<g transform="translate(${cx} ${cy}) rotate(-90)">
-          <text x="0" y="-21" text-anchor="middle" dominant-baseline="central" font-size="1.9" font-weight="800">熊本大同青果</text>
-          <image x="-10" y="-18" width="20" height="20" href="${esc(asset.img)}" preserveAspectRatio="xMidYMid meet"/>
-          <text x="0" y="7" text-anchor="middle" dominant-baseline="central" font-size="2.3" font-weight="800" fill="#334155">管理No.：${esc(asset.asset_no||'未設定')}</text>
-          ${nameText}
-        </g>`;
-      }).join('');
-      return `<section class="sheet"><svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="296mm" viewBox="0 0 210 296" aria-label="A4・27面QRシール">${labelsSvg}</svg></section>`;
-    }).join('');
+  function labelNameLines(ctx,name,maxWidth){
+    const value=String(name||'備品').trim()||'備品';
+    for(const pt of [7.6,7.2,6.8,6.4,6,5.6,5.2]){
+      ctx.font='800 '+labelFont(pt)+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+      const lines=[''];
+      for(const letter of [...value]){
+        const last=lines.length-1;
+        if(lines[last]&&ctx.measureText(lines[last]+letter).width>maxWidth){
+          lines.push(letter);
+        }else{
+          lines[last]+=letter;
+        }
+      }
+      if(lines.length<=3)return {lines,pt};
+    }
+    ctx.font='800 '+labelFont(5.2)+'px "Noto Sans JP","Yu Gothic",Meiryo,sans-serif';
+    const lines=[''];
+    for(const letter of [...value]){
+      const last=lines.length-1;
+      if(lines[last]&&ctx.measureText(lines[last]+letter).width>maxWidth){
+        if(lines.length>=3){
+          while(lines[2]&&ctx.measureText(lines[2]+'…').width>maxWidth)lines[2]=lines[2].slice(0,-1);
+          lines[2]+='…';
+          return {lines,pt:5.2};
+        }
+        lines.push(letter);
+      }else{
+        lines[last]+=letter;
+      }
+    }
+    return {lines,pt:5.2};
+  }
 
-    // Print one 296 mm-tall SVG per A4 sheet, NOT 27 independent grid cells:
-    // Chrome/Edge may fragment the latter and clip labels 25-27 on page one.
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title||'備品QR LBLA4-WPG-27印刷')}</title><style>
+  async function rasterizeLabel(label,layout=LABEL_STOCKS['31373']){
+    const qr=new Image();
+    await new Promise((resolve,reject)=>{
+      qr.onload=resolve;
+      qr.onerror=()=>reject(new Error('QR画像を読み込めませんでした。'));
+      qr.src=label.img;
+    });
+    // シール1枚分の画像を縦向きに組版し、シート別寸法で回転出力する。
+    const portrait=document.createElement('canvas');
+    portrait.width=Math.round(labelMm(layout.height));
+    portrait.height=Math.round(labelMm(layout.width));
+    const ctx=portrait.getContext('2d');
+    if(!ctx)throw new Error('印刷用の画像を生成できませんでした。');
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,portrait.width,portrait.height);
+    const width=portrait.width;
+    const name=labelNameLines(ctx,label.name||'備品',labelMm(28.6));
+    const lineHeight=labelMm(3);
+    const nameHeight=Math.max(labelMm(6),name.lines.length*lineHeight);
+    const total=labelMm(2.5+0.8+20+0.7+3.4+0.5)+nameHeight;
+    let y=(portrait.height-total)/2;
+    labelText(ctx,'熊本大同青果',width/2,y+labelMm(1.25),5.4,labelMm(28.6));
+    y+=labelMm(3.3);
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(qr,(width-labelMm(20))/2,y,labelMm(20),labelMm(20));
+    y+=labelMm(20.7);
+    labelText(ctx,'管理No.：'+(label.asset_no||'未設定'),width/2,y+labelMm(1.7),6.5,labelMm(28.6),'#334155');
+    y+=labelMm(3.9);
+    name.lines.forEach((line,i)=>labelText(ctx,line,width/2,
+      y+(i+0.5)*lineHeight+(nameHeight-name.lines.length*lineHeight)/2,
+      name.pt,labelMm(28.6)
+    ));
+    const output=document.createElement('canvas');
+    output.width=Math.round(labelMm(layout.width));
+    output.height=Math.round(labelMm(layout.height));
+    const out=output.getContext('2d');
+    if(!out)throw new Error('印刷用の画像を生成できませんでした。');
+    out.translate(0,output.height);
+    out.rotate(-Math.PI/2);
+    out.drawImage(portrait,0,0);
+    return output.toDataURL('image/png');
+  }
+
+  async function writeLabelPrintWindow(w,labels,startPosition,title,layout=LABEL_STOCKS['31373']){
+    // Resolve fonts before baking text into pixels; changing fonts later cannot
+    // repair an already-rasterized label.
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    const imageCache=new Map();
+    const prepared=[];
+    for(const item of labels){
+      const key=[layout.code,item.img,item.name,item.asset_no].join('|');
+      if(!imageCache.has(key))imageCache.set(key,await rasterizeLabel(item,layout));
+      prepared.push({...item,printImg:imageCache.get(key)});
+    }
+    const pages=buildPages(prepared,startPosition,layout);
+    // Keep each A4 page a single SVG print object. Text and QR are already
+    // combined in each label image, so neither can fragment at a page break.
+    const pageHtml=pages.map(slots=>{
+      const cells=slots.map((item,slot)=>{
+        const col=slot%layout.cols,row=Math.floor(slot/layout.cols);
+        const left=Math.round((layout.left+col*(layout.width+layout.colGap))*100)/100;
+        const top=Math.round((layout.top+row*(layout.height+layout.rowGap))*100)/100;
+        const guide='<rect class="cut-guide" x="'+left+'" y="'+top+'" width="'+layout.width+'" height="'+layout.height+'"/>';
+        if(!item)return '<g class="label blank">'+guide+'</g>';
+        return '<g class="label">'+guide+'<image class="print-label-image" x="'+left+'" y="'+top+'" width="'+layout.width+'" height="'+layout.height+'" href="'+esc(item.printImg)+'" preserveAspectRatio="none"><title>'+esc((item.asset_no||'')+' '+item.name)+'</title></image></g>';
+      }).join('');
+      return '<section class="sheet"><svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="296mm" viewBox="0 0 210 296" aria-label="A4・'+(layout.cols*layout.rows)+'面QRシール">'+cells+'</svg></section>';
+    }).join('');
+    w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title||'備品QR エーワン'+layout.code+'印刷')+'</title><style>'+String.raw`
 @page{size:A4 portrait;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
@@ -263,22 +385,14 @@ html,body{margin:0;padding:0;background:#fff;color:#111;font-family:-apple-syste
 .sheet svg{display:block;width:210mm;height:296mm}
 .cut-guide{fill:none;stroke:transparent;stroke-width:.15}
 .print-toolbar{display:none}
-@media screen{
-  body{background:#e9eff2;padding:9mm 0}
-  .print-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px 18px;background:#fff;border:1px solid #d7e2e8;border-radius:12px;padding:14px 18px;margin:0 auto 8mm;width:min(860px,95%);font-size:13px;color:#25465b}
-  .print-toolbar strong{font-size:15px}
-  .print-toolbar span{flex-basis:100%;text-align:center;line-height:1.6}
-  .print-toolbar button{background:#075b9b;color:white;border:0;border-radius:9px;padding:10px 19px;font-size:14px;font-weight:bold;cursor:pointer}
-  .sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15);margin-bottom:9mm}
-  .cut-guide{stroke:#d0dce2}
-}
+@media screen{body{background:#e9eff2;padding:9mm 0}.print-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px 18px;background:#fff;border:1px solid #d7e2e8;border-radius:12px;padding:14px 18px;margin:0 auto 8mm;width:min(860px,95%);font-size:13px;color:#25465b}.print-toolbar span{flex-basis:100%;text-align:center}.print-toolbar button{background:#075b9b;color:#fff;border:0;border-radius:9px;padding:10px 19px;font-weight:bold;cursor:pointer}.sheet{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15);margin-bottom:9mm}.cut-guide{stroke:#d0dce2}}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.cut-guide{stroke:none!important}.print-toolbar{display:none!important}}
-</style></head><body><div class="print-toolbar"><strong>QRシール ${labels.length}件・${pages.length}ページ</strong><button type="button" onclick="window.print()">印刷</button><span>A4縦／倍率100%／余白なし／ヘッダー・フッターなし。ラベル用紙の前に普通紙で位置確認してください。</span></div>${pageHtml}<script>
+</style></head><body>`+'<div class="print-toolbar"><strong>QRシール '+labels.length+'件・'+pages.length+'ページ / '+esc(layout.code)+'</strong><button type="button" onclick="window.print()">印刷</button><span>A4縦／倍率100%／余白なし／ヘッダー・フッターなし。ラベル用紙の前に普通紙で位置確認してください。</span></div>'+pageHtml+String.raw`<script>
 window.addEventListener('load',async function(){
   try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(_e){}
   setTimeout(function(){window.print()},400);
 });
-<\/script></body></html>`);
+</script></body></html>`);
     w.document.close();
   }
 
@@ -305,8 +419,8 @@ window.addEventListener('load',async function(){
     if(!selected.length){ alert('印刷する備品にチェックを入れてください。'); return; }
     if(!window.QRCode||typeof QRCode.toCanvas!=='function'){ alert('QRライブラリを読み込めませんでした。ページを再読み込みしてください。'); return; }
 
-    const startPosition=chooseStartPosition();
-    if(startPosition===null)return;
+    const settings=choosePrintSettings();
+    if(!settings)return;
 
     // ブラウザのポップアップ制限対策：クリック直後に印刷タブを先に開く
     const w=window.open('','_blank');
@@ -328,7 +442,7 @@ window.addEventListener('load',async function(){
         labels.push({name:info.name||'備品',asset_no:info.asset_no||null,location:info.location||null,img:c.toDataURL('image/png')});
       }
       w.document.open();
-      writeLabelPrintWindow(w,labels,startPosition,'備品QR LBLA4-WPG-27・27面印刷');
+      await writeLabelPrintWindow(w,labels,settings.startPosition,'備品QR '+settings.layout.title+'・'+(settings.layout.cols*settings.layout.rows)+'面印刷',settings.layout);
     }catch(err){
       console.error('QRまとめ印刷',err);
       try{
