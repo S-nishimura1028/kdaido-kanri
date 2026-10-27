@@ -29,6 +29,10 @@
     if(running)return;
     const host=document.getElementById('historyTable');
     if(!host||!host.querySelector('table'))return;
+    // app.js owns rows with asset metadata. Replacing that four-column
+    // table with the legacy six-column layout loses QR/history identity
+    // and makes the workspace read the user/actor cells as action/details.
+    if(host.querySelector('tbody tr[data-asset-id]'))return;
     if(host.querySelector('th[data-history-enhanced="1"]'))return;
 
     const c=db();
