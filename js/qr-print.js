@@ -5,14 +5,11 @@
     return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   }
 
-  let client=null;
+
   let activeAssetId=null;
 
   function db(){
-    if(client)return client;
-    if(!window.supabase||!window.SUPABASE_URL||!window.SUPABASE_PUBLISHABLE_KEY)return null;
-    client=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_PUBLISHABLE_KEY);
-    return client;
+    return window.DaidoQrBridge?.getClient?.()||null;
   }
 
   async function fetchAssetPrintInfo(id,fallbackName,fallbackNo){
