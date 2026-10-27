@@ -112,9 +112,10 @@ test('password login uses Supabase Auth with the entered credentials',async()=>{
   assert.equal(calls[0].email,'staff@example.com');
   assert.equal(calls[0].password,'a-test-password');
   assert.equal(e.submitter.disabled,false);
-  assert.equal(e.submitter.textContent,'ログイン');
+  assert.equal(e.submitter.textContent,'管理者ログイン');
   error={message:'Invalid login credentials'};
   await $('loginForm').listeners.submit(e);
   assert.equal(calls.length,2);
   assert.match($('loginError').textContent,/Invalid login credentials/);
 });
+
