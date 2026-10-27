@@ -140,4 +140,3 @@ test('quick user editor and photo editor resolve the currently displayed asset',
   assert.match(file('js/current-user.js'),/dataset\.assetId\|\|currentAssetId/);
   assert.match(file('js/photo-update.js'),/dataset\.assetId\|\|currentAssetId/);
 });
-
