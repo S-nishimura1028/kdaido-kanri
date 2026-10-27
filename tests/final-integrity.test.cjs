@@ -24,7 +24,7 @@ test('parallel searches cannot overwrite the newest search results',async()=>{
     });}
   });
   const c={
-    $:id=>ui[id], assetUsers:[],assets:[],console,
+    $:id=>ui[id], window:{},assetUsers:[],assets:[],console,
     db:{from(){return queryFor(++queryNumber);}},
     renderAssetsTable(rows){rendered.push(rows.map(x=>x.id));},
     openAssetFromUrlOnce(){}
@@ -45,7 +45,7 @@ test('rapid double submission creates only one asset and restores save button st
   assert.ok(start>=0&&end>start);
   const ui=new Map();
   function $(id){
-    if(!ui.has(id))ui.set(id,{value:'',textContent:'',disabled:false,selectedOptions:[]});
+    if(!ui.has(id))ui.set(id,{value:'',textContent:'',disabled:false,selectedOptions:[],addEventListener(){}});
     return ui.get(id);
   }
   $('assetForm').addEventListener=function(_event,cb){this.handler=cb;};
@@ -72,7 +72,7 @@ test('rapid double submission creates only one asset and restores save button st
   };
   const sandbox={
     $,db:mock, categories:[],locations:[],departments:[],assetUsers:[],
-    pendingPhotoFile:null,pendingLabelPhotoFile:null,assets:[],console,
+    pendingCreateId:'test-create-id',generateAssetCreateId:()=> 'test-create-id',pendingPhotoFile:null,pendingLabelPhotoFile:null,assets:[],console,
     async loadAssets(){},async loadDashboard(){}
   };
   vm.runInNewContext(app.slice(start,end),sandbox);
@@ -87,22 +87,23 @@ test('rapid double submission creates only one asset and restores save button st
   assert.equal(insertCount,1);
   assert.equal($('assetDialog').closed,true);
   assert.equal($('saveAssetBtn').disabled,false);
-  assert.equal($('saveAssetBtn').textContent,'保存');
+  assert.equal($('saveAssetBtn').textContent,'備品を登録');
 });
 
 test('save button is released even when insertion fails',async()=>{
   const start=app.indexOf('  let assetFormSaving=false;'),end=app.indexOf('\n  async function showDetail(',start);
   const ui=new Map();
-  const $=id=>{if(!ui.has(id))ui.set(id,{value:'',textContent:'',disabled:false,selectedOptions:[]});return ui.get(id)};
+  const $=id=>{if(!ui.has(id))ui.set(id,{value:'',textContent:'',disabled:false,selectedOptions:[],addEventListener(){}});return ui.get(id)};
   $('assetForm').addEventListener=function(event,fn){this.handler=fn;};
   $('assetName').value='テスト';$('quantity').value='1';
-  const mock={from:()=>({insert(){return this;},select(){return this;},async single(){return{data:null,error:new Error('simulated database error')}}})};
+  const mock={from:()=>({insert(){return this;},select(){return this;},eq(){return this;},async maybeSingle(){return{data:null,error:null}},async single(){return{data:null,error:new Error('simulated database error')}}})};
   vm.runInNewContext(app.slice(start,end),{
     $,db:mock,categories:[],locations:[],departments:[],assetUsers:[],
-    pendingPhotoFile:null,pendingLabelPhotoFile:null,assets:[],
+    pendingCreateId:'test-create-id',generateAssetCreateId:()=> 'test-create-id',pendingPhotoFile:null,pendingLabelPhotoFile:null,assets:[],
     console:{error(){}},loadAssets:async()=>{},loadDashboard:async()=>{}
   });
   await $('assetForm').handler({preventDefault(){}});
   assert.equal($('saveAssetBtn').disabled,false);
   assert.match($('assetFormError').textContent,/simulated database error/);
 });
+
