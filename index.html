@@ -275,7 +275,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
   <dialog id="assetDialog">
     <form method="dialog" id="assetForm" class="dialog-card">
-      <div class="dialog-head"><h3 id="assetDialogTitle">備品登録</h3><button value="cancel" class="close" aria-label="登録・編集画面を閉じる" title="閉じる">×</button></div>
+      <div class="dialog-head"><h3 id="assetDialogTitle">備品登録</h3><button type="button" id="assetFormCloseBtn" class="close" aria-label="登録・編集画面を閉じる" title="閉じる">×</button></div>
       <input type="hidden" id="assetId">
       <div class="form-grid">
         <label>管理No.（自動採番）<input id="assetNo" placeholder="保存すると自動で付番されます" readonly><small style="font-size:12px;color:var(--muted);font-weight:500">新規登録するとKD-0001形式の番号が自動発行されます。既存番号は変更できません。</small></label>
@@ -313,7 +313,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
         </div>
       </div>
       <div id="assetFormError" class="error" role="alert" aria-live="assertive"></div>
-      <div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button id="saveAssetBtn" class="primary" value="default">備品を登録</button></div>
+      <div class="dialog-actions"><button type="button" id="assetFormCancelBtn" class="secondary">キャンセル</button><button type="submit" id="saveAssetBtn" class="primary">備品を登録</button></div>
     </form>
   </dialog>
 
