@@ -288,6 +288,10 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
         <label>使用・保管場所<select id="locationForm"></select></label>
         <label>使用者マスタから選択<select id="currentUserId"><option value="">使用者なし（未割当）</option></select><small style="font-size:12px;color:var(--muted)">名前・所属部署・居住場所・部屋番号は管理画面の使用者マスタで管理します。</small></label>
         <label>ステータス<select id="statusForm"><option>未使用</option><option>使用中</option><option>修理中</option><option>廃棄</option></select><small id="assetStatusHint" class="workspace-status-hint" role="status" aria-live="polite">使用中にするには使用者の選択が必要です。</small></label>
+        <label id="assetDisposalReasonField" class="full-row hidden">廃棄理由（必須）
+          <textarea id="assetDisposalReason" maxlength="500" rows="3" placeholder="例：故障し修理不能のため、現物・付属品を確認して廃棄"></textarea>
+          <small style="font-weight:500;color:var(--muted)">廃棄に変更する場合、理由を5文字以上入力してください。備品の備考と履歴にも保存します。</small>
+        </label>
         <label class="full-row">現物写真① 外観
           <input id="assetPhoto" type="file" accept="image/*" capture="environment">
           <small style="font-weight:500;color:var(--muted)">備品全体が分かる写真（スマホでその場で撮影できます／10MBまで）</small>
@@ -322,7 +326,7 @@ body:has(.login-view:not(.hidden)) .sidebar nav {
 
   <script src="js/config.js?v=20261027-password-policy-1"></script>
   <script src="js/image-compress.js"></script>
-  <script src="js/app.js?v=20261027-atomic-photo-1"></script>
+  <script src="js/app.js?v=20261027-asset-edit-guard-1"></script>
   <script src="js/asset-input-guide.js?v=20261022-1"></script>
   <script src="js/admin-master.js?v=20261027-strong-password-1"></script>
   <!-- auto deploy test -->
