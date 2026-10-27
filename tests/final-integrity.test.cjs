@@ -106,4 +106,3 @@ test('save button is released even when insertion fails',async()=>{
   assert.equal($('saveAssetBtn').disabled,false);
   assert.match($('assetFormError').textContent,/simulated database error/);
 });
-
