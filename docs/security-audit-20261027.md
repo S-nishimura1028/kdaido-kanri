@@ -77,9 +77,9 @@ order by c.relname;
 
 ### 2. 漏えいパスワード保護
 Security Advisor: `Leaked Password Protection Disabled`。
-Supabase公式では Pro プラン以上の機能。現在の請求プランは今回の読み取り検証では未確認。
-利用可能なら Dashboard の Authentication / Email provider のパスワード設定から有効化し、Security Advisorを再実行する。
-Freeプランで利用不可なら既存の12文字＋文字種チェック、長い固有パスワード、MFA、管理者アカウント棚卸しを優先する。
+Supabase公式では Pro プラン以上の機能。**2026-10-27の組織プラン照会で Free（tier_free）を確認**。よって現在のプランでは漏えいパスワード保護の有効化はできない。
+Pro以上への移行を会社として判断した場合のみ、DashboardのAuth設定で有効化してSecurity Advisorを再実行する。
+Freeプランでは既存の12文字＋文字種チェック、長い固有パスワード、MFA、管理者アカウント棚卸しを優先する。
 
 ### 3. 実機とAPIの受入確認（未完了）
 - ログアウト状態でQRを開く→ログイン画面だけが出る
