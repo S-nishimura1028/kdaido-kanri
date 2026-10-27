@@ -360,7 +360,15 @@
       $('assetStatusHint').textContent='使用者を選択したため、ステータスを「使用中」に切り替えました。';
     }else assignmentHint();
   });
-  $('statusForm').addEventListener('change',assignmentHint);
+  function updateDisposalReasonField(){
+    const id=$('assetId').value||null;
+    const existing=id?assets.find(a=>String(a.id)===String(id)):null;
+    const requireReason=$('statusForm').value==='廃棄'&&(!existing||existing.status!=='廃棄');
+    const box=$('assetDisposalReasonField'),field=$('assetDisposalReason');
+    if(box)box.classList.toggle('hidden',!requireReason);
+    if(field)field.required=requireReason;
+  }
+  $('statusForm').addEventListener('change',()=>{assignmentHint();updateDisposalReasonField();});
   function openAssetForm(id=null){
     $('assetForm').reset();
     pendingCreateId=id?null:generateAssetCreateId();
@@ -372,6 +380,7 @@
     $('assetNo').value='';$('assetNo').readOnly=true;
     $('assetNo').placeholder='保存すると自動で付番されます';
     $('statusForm').value='未使用';
+    $('assetDisposalReason').value='';
     // Rebuild to remove any temporary legacy entry from the previous edit.
     refreshUserOptions();$('currentUserId').value='';
     $('acquisitionMethod').value='';
@@ -410,9 +419,31 @@
       ?'既存備品の貸出・返却は「QRクイック操作」、直接引継ぎは「使用者変更」から行ってください。'
       :'名前・所属部署・居住場所・部屋番号は管理画面の使用者マスタで管理します。';
     assignmentHint();
+    updateDisposalReasonField();
     $('assetFormError').textContent='';$('assetDialog').showModal();
   }
   $('newAssetBtn').onclick=()=>openAssetForm();
+  // If the connection drops after a successful UPDATE, confirm the server
+  // state before suggesting another save. A matching timestamp change and
+  // every expected field are both required; a stale editor is not a success.
+  function editedAssetMatches(actual,payload,original){
+    if(!actual||actual.is_deleted!==false||!actual.updated_at||
+       !original?.updated_at||actual.updated_at===original.updated_at)return false;
+    return Object.entries(payload).every(([field,expected])=>{
+      const value=actual[field];
+      if(value==null||expected==null)return value==null&&expected==null;
+      if(field==='purchase_price'||field==='quantity')return Number(value)===Number(expected);
+      return String(value)===String(expected);
+    });
+  }
+  async function verifyEditedAssetSaved(id,payload,original){
+    try{
+      const columns=[...Object.keys(payload),'updated_at','is_deleted'].join(',');
+      const {data,error}=await db.from('assets').select(columns)
+        .eq('id',id).eq('is_deleted',false).maybeSingle();
+      return !error&&editedAssetMatches(data,payload,original);
+    }catch(_e){return false;}
+  }
   let assetFormSaving=false;
   $('assetForm').addEventListener('submit',async e=>{
     e.preventDefault();
@@ -426,6 +457,12 @@
     const uploaded=[];let inserted=false,photoCommitted=false,saveCommitted=false,assetId=id;
     try{
       // Client-side explanation; the database independently enforces the rule.
+      const original=id?assets.find(a=>String(a.id)===String(id)):null;
+      if(payload.status==='廃棄'&&(!id||original?.status!=='廃棄')){
+        const reason=$('assetDisposalReason').value.trim();
+        if(reason.length<5)throw new Error('廃棄理由を5文字以上で入力してください。');
+        payload.note=[payload.note,'【廃棄理由】'+reason].filter(Boolean).join('\n');
+      }
       if(payload.status==='使用中'&&!payload.assigned_user_id){
         throw new Error('「使用中」にするには、使用者マスタから使用者を選択してください。');
       }
@@ -433,7 +470,6 @@
         throw new Error('「未使用」「廃棄」にする前に、現物の返却・引継ぎを確認して使用者を解除してください。');
       }
       if(id){
-        const original=assets.find(a=>String(a.id)===String(id));
         if(!original)throw new Error('変更前の備品情報が見つかりません。備品一覧を開き直してください。');
         // Prevent the ordinary editor from bypassing physical inspection and
         // the dedicated, audited lending/return/transfer confirmations.
@@ -452,7 +488,9 @@
           changes.push('保管場所：'+(original.location||'未設定')+' → '+(payload.location||'未設定'));
         if(changes.length && !window.confirm(
           (original.asset_no||'管理No.なし')+' / '+(original.name||'備品')+
-          '\n\n重要な変更を保存しますか？\n'+changes.join('\n')+'\n\n現物の状態と場所を確認してから確定してください。'
+          '\n\n重要な変更を保存しますか？\n'+changes.join('\n')+
+          (payload.status==='廃棄'&&original.status!=='廃棄'?'\n廃棄理由：'+$('assetDisposalReason').value.trim():'')+
+          '\n\n現物の状態と場所を確認してから確定してください。'
         ))return;
         // Compare the original row timestamp atomically at the update. A
         // stale edit must never overwrite another manager's QR transfer,
@@ -463,9 +501,16 @@
         request=original.assigned_user_id
           ?request.eq('assigned_user_id',original.assigned_user_id)
           :request.is('assigned_user_id',null);
-        const r=await request.select('id').maybeSingle();
-        if(r.error)throw r.error;
-        if(!r.data)throw new Error('別の管理者が備品情報を更新しています。再度一覧を開いて最新の内容を確認してください。');
+        let r;
+        try{r=await request.select('id').maybeSingle();}
+        catch(requestError){r={error:requestError};}
+        if(r.error){
+          if(!(await verifyEditedAssetSaved(id,payload,original))){
+            throw new Error('保存結果を確認できませんでした。再度保存する前に一覧で最新の備品情報を確認してください。詳細：'+(r.error.message||'通信エラー'));
+          }
+        }else if(!r.data){
+          throw new Error('別の管理者が備品情報を更新しています。再度一覧を開いて最新の内容を確認してください。');
+        }
         saveCommitted=true;
       }else{
         // The PK is generated once for this form, not once per click/retry.
