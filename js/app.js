@@ -627,7 +627,7 @@
     const rows=[];
     for(let offset=0;;offset+=500){
       const res=await db.from('asset_history').select(
-        'asset_id,asset_no_snapshot,asset_name_snapshot,action,user_name,note,created_at,before_status,after_status'
+        'asset_id,asset_no_snapshot,asset_name_snapshot,action,user_name,note,created_at,before_status,after_status,disposal_note:after_data->>note'
       ).order('created_at',{ascending:false}).range(offset,offset+499);
       if(res.error)throw res.error;
       rows.push(...(res.data||[]));
@@ -662,10 +662,15 @@
         const number=h.asset_no_snapshot||original?.asset_no||'番号未記録';
         const name=h.asset_name_snapshot||original?.name||'備品名未記録';
         const time=h.created_at?new Date(h.created_at).toLocaleString('ja-JP'):'日時未記録';
-        const detail=h.note||(
+        // Keep the disposal reason visible without fetching full JSON history
+        // snapshots (PostgREST projects only the note field from after_data).
+        const reason=h.action==='廃棄'
+          ?String(h.disposal_note||'').match(/【廃棄理由】([^\r\n]+)/)?.[1]?.trim()
+          :null;
+        const detail=h.note||(reason?'廃棄理由：'+reason:(
           h.before_status!==h.after_status && h.before_status && h.after_status?
           h.before_status+' → '+h.after_status:'変更履歴'
-        );
+        ));
         const who=h.user_name?' <small class="workspace-history-actor">操作担当：'+esc(h.user_name)+'</small>':'';
         return '<tr data-asset-id="'+esc(h.asset_id||'')+
           '" data-asset-no="'+esc(number==='番号未記録'?'':number)+
