@@ -1,6 +1,8 @@
 // STAGING-ONLY: Do not merge this file into main or deploy it to the production domain.
-if (['kdaido-kanri.vercel.app','kdaido-kanri-auto.vercel.app'].includes(location.hostname)) {
-  throw new Error('STAGING-ONLY build must not run on a production domain');
+// Only the Vercel alias assigned to this staging branch is permitted.
+// This prevents the staging build from accidentally running under a production alias.
+if (location.hostname !== 'kdaido-kanri-auto-git-staging-28a335-tr6dqmrwjx-3964s-projects.vercel.app') {
+  throw new Error('STAGING-ONLY build: open the dedicated staging branch URL');
 }
 window.SUPABASE_URL = 'https://jhcurtjtjzrbsvptkpuz.supabase.co';
 window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_K-b0oxmswodqdLh4Lh1usA_iYLsL5p2';
