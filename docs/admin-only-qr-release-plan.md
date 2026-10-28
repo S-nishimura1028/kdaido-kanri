@@ -3,7 +3,7 @@
 作業ブランチ: `feature/admin-only-qr-security`
 対象: https://kdaido-kanri.vercel.app / Supabase `rhjnrguhnkfotggzxjfs`
 
-**ステータス: 提案・レビュー待ち。以下のSQLとEdge Functionの本番適用はまだ実施しない。**
+**履歴文書（2026-10-28現在）：QRの管理者専用化は既に本番で適用・権限を検証済みです。** 以下の「未実施」「本番切替前」の記載は切替当時の計画・手順として保持しており、現在の未完了作業を意味しません。最新のアクセス制御は [security.md](security.md) と [security-audit-20261027.md](security-audit-20261027.md) を参照してください。旧匿名公開経路を有効化し直さないこと。
 
 ## 目的・保持事項
 
