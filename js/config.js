@@ -117,3 +117,20 @@ window.APP_BASE_URL = location.origin; // Staging QR codes stay within staging P
   s.defer=true;
   document.head.appendChild(s);
 })();
+
+// Obvious visual distinction for staging; does not affect application controls.
+(function stagingEnvironmentIndicator(){
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.title='【検証環境】'+document.title;
+    const mark=document.createElement('div');
+    mark.textContent='検証環境・架空データのみ';
+    mark.setAttribute('aria-label','検証環境・本番ではありません');
+    Object.assign(mark.style,{
+      position:'fixed',right:'8px',bottom:'8px',zIndex:'99999',
+      padding:'4px 8px',fontSize:'11px',fontWeight:'700',
+      borderRadius:'5px',background:'#fff3cd',color:'#694500',
+      border:'1px solid #e4b951',pointerEvents:'none',opacity:'.92'
+    });
+    document.body.appendChild(mark);
+  });
+})();
