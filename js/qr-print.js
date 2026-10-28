@@ -165,7 +165,15 @@
       // card workspace through the same native change event.
       head.dispatchEvent(new Event('change',{bubbles:true}));
     });
-    bar.append(note,selectBtn,btn);
+    const byGroup=document.createElement('button');
+    byGroup.type='button';
+    byGroup.id='qrGroupPrintBtn';
+    byGroup.className='secondary';
+    byGroup.textContent='保管場所・部署別に印刷';
+    byGroup.title='保管場所または所属部署からQR印刷対象を絞り込みます';
+    byGroup.addEventListener('click',openGroupPrintDialog);
+    bar.style.flexWrap='wrap';
+    bar.append(note,selectBtn,byGroup,btn);
     parent.insertBefore(bar,host);
   }
 
@@ -450,6 +458,230 @@ window.addEventListener('load',async function(){
       alert('QRまとめ印刷の準備中にエラーが発生しました。');
     }
   }
+
+
+  // Grouped printing works from the whole RLS-visible inventory, not the
+  // currently displayed table or its unrelated search/status filters.
+  const GROUP_UNSET='__unset__';
+  const groupedPrint={assets:[],loaded:false,busy:false,loading:false,dialog:null};
+
+  function groupLabel(asset,kind,masterMap){
+    const id=asset[kind+'_id'];
+    return String((id&&masterMap?.get(String(id)))||asset[kind]||'').trim();
+  }
+
+  function matchGroupFilter(filter,value){
+    return !filter||(filter===GROUP_UNSET?!value:filter===value);
+  }
+
+  function filteredGroupAssets(assets,location,department){
+    if(!location&&!department)return [];
+    return assets.filter(a=>matchGroupFilter(location,a._groupLocation)
+      &&matchGroupFilter(department,a._groupDepartment));
+  }
+
+  async function fetchGroupPrintAssets(){
+    const c=db();
+    if(!c)throw new Error('管理者ログインを確認できません。再度ログインしてください。');
+    const [places,departments]=await Promise.all([
+      c.from('locations').select('id,name'),
+      c.from('departments').select('id,name')
+    ]);
+    if(places.error)throw places.error;
+    if(departments.error)throw departments.error;
+    const placeMap=new Map((places.data||[]).map(x=>[String(x.id),x.name]));
+    const deptMap=new Map((departments.data||[]).map(x=>[String(x.id),x.name]));
+    const request=c.from('assets')
+      .select('id,asset_no,name,location,department,location_id,department_id,status')
+      .eq('is_deleted',false).neq('status','廃棄')
+      .order('asset_no').order('id');
+    const rows=[];
+    for(let offset=0;;offset+=500){
+      const {data,error}=await request.range(offset,offset+499);
+      if(error)throw error; // Never print an incomplete result on network failure.
+      rows.push(...(data||[]));
+      if((data||[]).length<500)break;
+    }
+    return rows.map(a=>({
+      ...a,
+      _groupLocation:groupLabel(a,'location',placeMap),
+      _groupDepartment:groupLabel(a,'department',deptMap)
+    }));
+  }
+
+  function groupSelections(){
+    const d=groupedPrint.dialog;
+    if(!d)return {location:'',department:''};
+    return {
+      location:d.querySelector('#qrGroupLocation').value,
+      department:d.querySelector('#qrGroupDepartment').value
+    };
+  }
+
+  function groupPrintList(){
+    const d=groupedPrint.dialog;if(!d)return [];
+    const selection=groupSelections();
+    return filteredGroupAssets(groupedPrint.assets,selection.location,selection.department);
+  }
+
+  function refreshGroupPrintView(){
+    const d=groupedPrint.dialog;if(!d)return;
+    const summary=d.querySelector('#qrGroupSummary');
+    const preview=d.querySelector('#qrGroupPreview');
+    const printBtn=d.querySelector('#qrGroupPrintNow');
+    if(!groupedPrint.loaded){
+      summary.textContent=groupedPrint.loading?'保管場所・所属部署を読み込み中…':'一覧を取得してください。';
+      preview.textContent='';printBtn.disabled=true;return;
+    }
+    const selection=groupSelections(),items=groupPrintList();
+    const noSelection=!selection.location&&!selection.department;
+    const withoutNumbers=items.filter(a=>!a.asset_no);
+    summary.textContent=noSelection
+      ? '保管場所または所属部署を1つ以上選択してください。'
+      : items.length
+        ? '印刷候補 '+items.length+'件（31373なら'+Math.ceil(items.length/27)+'ページ）'
+          +(withoutNumbers.length?' ／ 管理No.未設定 '+withoutNumbers.length+'件：印刷不可':'')
+        : 'この条件に合う備品はありません。';
+    preview.innerHTML=items.length
+      ?'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left">管理No.</th><th style="text-align:left">備品名</th><th style="text-align:left">保管場所 / 部署</th></tr></thead><tbody>'+
+        items.slice(0,60).map(a=>'<tr><td style="padding:7px 4px;border-top:1px solid #e2e8f0">'+esc(a.asset_no||'未設定')+
+          '</td><td style="padding:7px 4px;border-top:1px solid #e2e8f0">'+esc(a.name)+
+          '</td><td style="padding:7px 4px;border-top:1px solid #e2e8f0">'+
+          esc(a._groupLocation||'未設定')+' / '+esc(a._groupDepartment||'未設定')+'</td></tr>').join('')+
+        '</tbody></table>'+(items.length>60?'<p>ほか '+(items.length-60)+' 件（印刷時にはすべて対象）</p>':'')
+      : '';
+    printBtn.disabled=groupedPrint.busy||noSelection||items.length===0||withoutNumbers.length>0;
+    printBtn.textContent=items.length?'この条件でQR印刷（'+items.length+'件）':'この条件でQR印刷';
+  }
+
+  function populateGroupOptions(){
+    const d=groupedPrint.dialog;if(!d)return;
+    for(const [kind,field] of [['location','_groupLocation'],['department','_groupDepartment']]){
+      const select=d.querySelector(kind==='location'?'#qrGroupLocation':'#qrGroupDepartment');
+      const prev=select.value;
+      const names=[...new Set(groupedPrint.assets.map(a=>a[field]).filter(Boolean))]
+        .sort((a,b)=>a.localeCompare(b,'ja'));
+      const hasUnset=groupedPrint.assets.some(a=>!a[field]);
+      select.innerHTML='<option value="">すべて'+(kind==='location'?'の保管場所':'の所属部署')+'</option>'+
+        (hasUnset?'<option value="'+GROUP_UNSET+'">未設定</option>':'')+
+        names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
+      if([...select.options].some(o=>o.value===prev))select.value=prev;
+    }
+  }
+
+  async function reloadGroupPrintAssets(){
+    if(groupedPrint.loading)return;
+    groupedPrint.loading=true;groupedPrint.loaded=false;
+    refreshGroupPrintView();
+    try{
+      const assets=await fetchGroupPrintAssets();
+      groupedPrint.assets=assets;
+      groupedPrint.loaded=true;
+      populateGroupOptions();
+      const d=groupedPrint.dialog;
+      if(d)d.querySelector('#qrGroupError').textContent='';
+    }catch(e){
+      console.error('QRグループ印刷：一覧取得',e);
+      const d=groupedPrint.dialog;
+      if(d)d.querySelector('#qrGroupError').textContent='一覧を読み込めませんでした：'+(e.message||'通信状況を確認してください。');
+    }finally{
+      groupedPrint.loading=false;refreshGroupPrintView();
+    }
+  }
+
+  async function printGroupedAssets(){
+    if(!groupedPrint.loaded||groupedPrint.busy)return;
+    const d=groupedPrint.dialog;
+    const {location:locationFilter,department:departmentFilter}=groupSelections();
+    const selection=filteredGroupAssets(groupedPrint.assets,locationFilter,departmentFilter);
+    if(!selection.length||selection.some(a=>!a.asset_no))return;
+    if(!window.QRCode||typeof QRCode.toCanvas!=='function'){
+      d.querySelector('#qrGroupError').textContent='QRライブラリを読み込めませんでした。ページを再読み込みしてください。';
+      return;
+    }
+    const settings=choosePrintSettings();
+    if(!settings)return;
+    const capacity=settings.layout.cols*settings.layout.rows;
+    const pageCount=Math.ceil((selection.length+settings.startPosition-1)/capacity);
+    if(pageCount>1&&!window.confirm(
+      'この条件には '+selection.length+' 件あります。'+pageCount+'ページの印刷になります。\n'+
+      '複数ページの実機位置合わせはまだ検証中です。普通紙で確認してからラベル用紙を使ってください。\n\n続けますか？'
+    ))return;
+    // Open on the actual click, before the network and QR canvas operations.
+    const w=window.open('','_blank');
+    if(!w){
+      d.querySelector('#qrGroupError').textContent='印刷用タブを開けませんでした。ポップアップを許可してください。';
+      return;
+    }
+    w.document.write('<!doctype html><meta charset="utf-8"><title>QR印刷準備中</title><p>対象備品を確認しています…</p>');
+    w.document.close();
+    groupedPrint.busy=true;refreshGroupPrintView();
+    try{
+      // Check for deletion, transfer, rename, or status changes before printing.
+      const fresh=await fetchGroupPrintAssets();
+      const freshItems=filteredGroupAssets(fresh,locationFilter,departmentFilter);
+      const fingerprint=arr=>arr.map(a=>[a.id,a.asset_no,a.name,a._groupLocation,a._groupDepartment,a.status].join('|')).join('\n');
+      if(fingerprint(freshItems)!==fingerprint(selection)){
+        groupedPrint.assets=fresh;groupedPrint.loaded=true;
+        populateGroupOptions();
+        throw new Error('印刷候補が変更されました。新しい件数と管理No.を確認して、もう一度印刷してください。');
+      }
+      const labels=[];
+      for(const asset of freshItems){
+        const url=new URL(window.APP_BASE_URL||location.origin+location.pathname);
+        url.pathname='/';url.search='';url.searchParams.set('asset',asset.id);
+        const canvas=document.createElement('canvas');
+        await QRCode.toCanvas(canvas,url.toString(),{width:240,margin:1,errorCorrectionLevel:'M'});
+        labels.push({name:asset.name,asset_no:asset.asset_no,img:canvas.toDataURL('image/png')});
+      }
+      const descriptor=[locationFilter?'場所別':'',departmentFilter?'部署別':''].filter(Boolean).join('＋');
+      w.document.open();
+      await writeLabelPrintWindow(w,labels,settings.startPosition,
+        'QR '+descriptor+' '+freshItems.length+'件（'+settings.layout.code+'）',settings.layout);
+      d.querySelector('#qrGroupError').textContent='';
+    }catch(err){
+      console.error('QRグループ印刷',err);
+      try{w.close();}catch(_){}
+      d.querySelector('#qrGroupError').textContent=err.message||'印刷データを作成できませんでした。';
+    }finally{
+      groupedPrint.busy=false;refreshGroupPrintView();
+    }
+  }
+
+  async function openGroupPrintDialog(){
+    let d=document.getElementById('qrGroupPrintDialog');
+    if(!d){
+      d=document.createElement('dialog');
+      d.id='qrGroupPrintDialog';
+      d.style.cssText='width:min(800px,calc(100vw - 22px));max-width:800px;max-height:90vh;overflow:auto;border:0;border-radius:16px;padding:0;box-shadow:0 18px 70px #10243c66';
+      d.innerHTML='<div style="padding:20px;color:#1e293b;background:#fff">'+
+        '<h3 style="margin:0 0 6px">保管場所・所属部署ごとのQR印刷</h3>'+
+        '<p style="margin:0 0 16px;font-size:13px;color:#475569">備品に登録された保管場所・所属部署を使用します。廃棄済みは対象外。現在の一覧の検索条件には左右されません。</p>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">'+
+        '<label style="font-weight:bold;display:grid;gap:6px">保管場所<select id="qrGroupLocation" style="padding:12px;width:100%;font-size:16px"><option value="">すべての保管場所</option></select></label>'+
+        '<label style="font-weight:bold;display:grid;gap:6px">所属部署<select id="qrGroupDepartment" style="padding:12px;width:100%;font-size:16px"><option value="">すべての所属部署</option></select></label>'+
+        '</div><p id="qrGroupSummary" role="status" style="font-weight:800;margin:14px 0 8px"></p>'+
+        '<div id="qrGroupPreview" style="border:1px solid #e2e8f0;border-radius:9px;max-height:38vh;overflow:auto;padding:6px 10px"></div>'+
+        '<p id="qrGroupError" role="alert" style="color:#b42318;font-size:13px;margin-top:10px"></p>'+
+        '<div style="display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:16px">'+
+        '<button type="button" class="secondary" id="qrGroupRefresh">一覧を更新</button>'+
+        '<button type="button" class="secondary" id="qrGroupClose">閉じる</button>'+
+        '<button type="button" class="primary" id="qrGroupPrintNow" disabled>この条件でQR印刷</button></div>'+
+        '<p style="font-size:12px;color:#64748b;margin:10px 0 0">31373：A4・27面。新しいシール用紙は開始位置1。印刷プレビューで倍率100％を確認してください。</p></div>';
+      document.body.appendChild(d);
+      groupedPrint.dialog=d;
+      d.querySelector('#qrGroupLocation').addEventListener('change',refreshGroupPrintView);
+      d.querySelector('#qrGroupDepartment').addEventListener('change',refreshGroupPrintView);
+      d.querySelector('#qrGroupRefresh').addEventListener('click',reloadGroupPrintAssets);
+      d.querySelector('#qrGroupClose').addEventListener('click',()=>{if(!groupedPrint.busy)d.close()});
+      d.querySelector('#qrGroupPrintNow').addEventListener('click',printGroupedAssets);
+      d.addEventListener('cancel',e=>{if(groupedPrint.busy)e.preventDefault()});
+    }
+    groupedPrint.dialog=d;
+    if(!d.open)d.showModal();
+    await reloadGroupPrintAssets();
+  }
+
 
   let scheduled=false;
   function scheduleEnhance(){
