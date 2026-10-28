@@ -44,6 +44,7 @@ https://kdaido-kanri.vercel.app
 - [システム構成](docs/architecture.md)
 - [セキュリティ・権限](docs/security.md)
 - [2026年10月27日 セキュリティ点検記録・未適用の権限見直し案](docs/security-audit-20261027.md)
+- [管理者向け・かんたん操作ガイド](docs/operator-quick-guide.md)
 - [運用手順](docs/operations.md)
 - [会社への引継ぎ](docs/handover.md)
 
