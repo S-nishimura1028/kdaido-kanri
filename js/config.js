@@ -1,9 +1,13 @@
-window.SUPABASE_URL = 'https://rhjnrguhnkfotggzxjfs.supabase.co';
-window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_KhDnfK5Fkv_rj71OsCP2Gg_F0fuXZy9';
+// STAGING-ONLY: Do not merge this file into main or deploy it to the production domain.
+if (['kdaido-kanri.vercel.app','kdaido-kanri-auto.vercel.app'].includes(location.hostname)) {
+  throw new Error('STAGING-ONLY build must not run on a production domain');
+}
+window.SUPABASE_URL = 'https://jhcurtjtjzrbsvptkpuz.supabase.co';
+window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_K-b0oxmswodqdLh4Lh1usA_iYLsL5p2';
 
 // 今後ずっと使う本番URL。Vercelの長いデプロイURLで開かれても
 // この固定URLへ自動的に寄せることで、QRコードも常に短いURLになります。
-window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
+window.APP_BASE_URL = location.origin; // Staging QR codes stay within staging Preview.
 
 (function enforceCanonicalProductionUrl(){
   try{
