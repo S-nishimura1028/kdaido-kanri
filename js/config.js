@@ -1,9 +1,15 @@
-window.SUPABASE_URL = 'https://rhjnrguhnkfotggzxjfs.supabase.co';
-window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_KhDnfK5Fkv_rj71OsCP2Gg_F0fuXZy9';
+// STAGING-ONLY: Do not merge this file into main or deploy it to the production domain.
+// Only the Vercel alias assigned to this staging branch is permitted.
+// This prevents the staging build from accidentally running under a production alias.
+if (location.hostname !== 'kdaido-kanri-auto-git-staging-28a335-tr6dqmrwjx-3964s-projects.vercel.app') {
+  throw new Error('STAGING-ONLY build: open the dedicated staging branch URL');
+}
+window.SUPABASE_URL = 'https://jhcurtjtjzrbsvptkpuz.supabase.co';
+window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_K-b0oxmswodqdLh4Lh1usA_iYLsL5p2';
 
 // 今後ずっと使う本番URL。Vercelの長いデプロイURLで開かれても
 // この固定URLへ自動的に寄せることで、QRコードも常に短いURLになります。
-window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
+window.APP_BASE_URL = location.origin; // Staging QR codes stay within staging Preview.
 
 (function enforceCanonicalProductionUrl(){
   try{
@@ -110,4 +116,21 @@ window.APP_BASE_URL = 'https://kdaido-kanri.vercel.app';
   s.src='js/sidebar-brand.js?v=20260816-1';
   s.defer=true;
   document.head.appendChild(s);
+})();
+
+// Obvious visual distinction for staging; does not affect application controls.
+(function stagingEnvironmentIndicator(){
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.title='【検証環境】'+document.title;
+    const mark=document.createElement('div');
+    mark.textContent='検証環境・架空データのみ';
+    mark.setAttribute('aria-label','検証環境・本番ではありません');
+    Object.assign(mark.style,{
+      position:'fixed',right:'8px',bottom:'8px',zIndex:'99999',
+      padding:'4px 8px',fontSize:'11px',fontWeight:'700',
+      borderRadius:'5px',background:'#fff3cd',color:'#694500',
+      border:'1px solid #e4b951',pointerEvents:'none',opacity:'.92'
+    });
+    document.body.appendChild(mark);
+  });
 })();
