@@ -126,7 +126,7 @@ function ensureDialog(){
     '<p style="margin:0 0 12px;font-size:13px;color:#536778">同じ使用者に同じ備品名が2件以上ある記録を探します。重複候補＝誤登録とは限りません。</p></div>'+
     '<button type="button" class="secondary" id="inventoryAuditClose" style="min-width:48px">閉じる</button></div>'+
     '<div style="padding:12px;border-radius:10px;background:#edf6f8;margin-bottom:12px;font-size:13px">'+
-    '<strong>シールの印刷状況について</strong><p style="margin:6px 0 0">現在のシステムには過去の印刷・貼付の記録がありません。「未印刷」とは断定できません。確認表は全件「未確認」で出力します。CSVの記録はサイトには保存されません。</p></div>'+
+    '<strong>シールの印刷状況について</strong><p style="margin:6px 0 0">過去の印刷・貼付記録はないため「未印刷」とは断定できません。このCSVは現物確認用で全件「未確認」から始まります。システムへの状況保存は備品一覧の「QRシール状況」で行ってください。</p></div>'+
     '<p id="inventoryAuditSummary" role="status" style="font-weight:800;margin:12px 0"></p>'+
     '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
     '<button type="button" class="secondary" id="inventoryAuditRefresh">最新の備品を読み込む</button>'+
